@@ -51,3 +51,34 @@ uint8_t gf_pow(uint8_t base, uint8_t exponent) {
 
     return antilog_table[(log_table[base]*exponent)%255];
 }
+
+int gf_deg(uint8_t poly) {
+    
+    if ( poly ==  0) return -1;
+    
+    int degree = 7;
+    while (poly >= 0) {
+        if(poly && (1 << degree)) {
+            return degree;
+        }
+        --degree;
+    }
+
+    return -1;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
