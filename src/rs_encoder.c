@@ -6,6 +6,7 @@
 #define max_errors 8
 
 uint8_t generator_polynomial;
+uint8_t roots[255];
 
 typedef struct {
     uint8_t error_locator_polynomial;
@@ -66,3 +67,49 @@ euclideon_result euclideon_algorithm(uint8_t a, uint8_t b) {
 
     return result;
 }
+
+uint8_t poly_roots(uint8_t poly, uint8_t x) {
+    uint8_t result = 0;
+    uint8_t x_power = 1;
+    
+    for (int bit = 0; bit < 8; bit++) {
+        if (poly & (1 << bit)) {
+            result = gf_add(result, x_power);
+        }
+        x_power = gf_mult(x_power, x);
+    }
+    return result;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
