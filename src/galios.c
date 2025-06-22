@@ -67,6 +67,11 @@ int gf_deg(uint8_t poly) {
     return -1;
 }
 
+uint8_t gf_diff(uint8_t poly) {
+    return poly << 1;
+}
+
+
 
 
 

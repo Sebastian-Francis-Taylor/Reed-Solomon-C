@@ -9,5 +9,6 @@ uint8_t gf_mult(uint8_t a,uint8_t b);
 uint8_t gf_div(uint8_t a,uint8_t b);
 uint8_t gf_pow(uint8_t base, uint8_t exponent);
 int gf_deg(uint8_t poly);
+uint8_t gf_diff(uint8_t poly);
 
 #endif

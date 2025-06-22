@@ -1,12 +1,15 @@
 #include <stdint.h>
-#include <stdio.h>
+#include <stdlib.h>
 #include "galios.h"
 
-#define max_degree 32
-#define max_errors 8
+int max_degree = 32;
+int max_errors = 8;
+uint8_t message[128];
+int message_len = 128;
 
 uint8_t generator_polynomial;
 uint8_t roots[255];
+
 
 typedef struct {
     uint8_t error_locator_polynomial;
@@ -36,7 +39,7 @@ uint8_t calculate_syndrome(uint8_t *received_poly, int syndrome_count, int codew
    return errors_detected;
 }
 
-euclideon_result euclideon_algorithm(uint8_t a, uint8_t b) {
+euclideon_result extended_euclideon_algorithm(uint8_t a, uint8_t b) {
     
     uint8_t remainder_prev = a;
     uint8_t remainder_curr = b;
@@ -60,7 +63,6 @@ euclideon_result euclideon_algorithm(uint8_t a, uint8_t b) {
         helper_t_curr = helper_t_next;
     }
 
-
     euclideon_result result;
     result.error_evaluator_polynomial = remainder_curr;
     result.error_locator_polynomial = helper_t_curr;
@@ -81,35 +83,29 @@ uint8_t poly_roots(uint8_t poly, uint8_t x) {
     return result;
 }
 
+// --------------------------------------------------------------------------------
+// @brief calculates error value vector from error positions, error evaluator
+//        and error locator polynomial using D. Fornay's formula
+// @input error_positions 
+// @input error_evaluator_polynomial
+// @input error_locator_polynomial
+// @return error value vector
+//
+uint8_t* error_value(uint8_t error_positions[message_len], uint8_t error_evaluator_polynomial, uint8_t error_locator_polynomial) {
+    
+    uint8_t* error_values = malloc(sizeof(uint8_t)*message_len);
+    for (int i = 0; i <= message_len; ++i) {
+        uint8_t error_position = gf_pow(-i,-(2*max_errors+1));
+        error_values[i] = gf_mult(gf_pow(-i,-(2*max_errors+1)), gf_div(error_evaluator_polynomial, gf_diff(error_locator_polynomial)));
+    }
 
+    return error_values;
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+uint8_t* resolve_errors(uint8_t* error_values, uint8_t* recieved_message) {
+    uint8_t* decoded_message = malloc(sizeof(uint8_t)*message_len);
+    for (int i = 0; i < message_len; ++i) {
+        decoded_message[i] = recieved_message[i]- error_values[i];
+    }
+    return decoded_message;
+}
