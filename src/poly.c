@@ -53,3 +53,35 @@ uint8_t *poly_div(uint8_t *dividend, uint8_t *divisor, int len) {
    free(temp_dividend);
    return quotient;
 }
+
+uint8_t poly_roots(uint8_t *poly, uint8_t x) {
+    uint8_t result = 0;
+    uint8_t x_power = 1;
+
+    for (int bit = 0; bit < 8; bit++) {
+        if (poly & (1 << bit)) {
+            result = gf_add(result, x_power);
+        }
+        x_power = gf_mult(x_power, x);
+    }
+
+    return result;
+}
+
+uint8_t calculate_poly_roots(uint8_t *poly) {
+    int degree = poly_degree(poly, sizeof(poly));
+    uint *poly_roots = malloc(sizeof(uint8_t)*degree);
+    for (int i = 0; i < 256; ++i)
+
+}
+
+
+
+
+
+
+
+
+
+
+
