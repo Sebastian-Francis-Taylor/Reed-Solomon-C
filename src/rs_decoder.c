@@ -1,6 +1,6 @@
 #include "galios.h"
-#include "poly.h"
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -26,7 +26,7 @@ uint8_t *calculate_syndrome(uint8_t *received_poly, int syndrome_count, int code
     int errors_detected = 0;
 
     for (int i = 0; i < syndrome_count; i++) {
-        uint8_t alpha_i = gf_pow(2, i + 1);
+        uint8_t alpha_i = gf_pow(2, i + 1); // Evaluate at α^(i+1)
         uint8_t result = 0;
         uint8_t x_power = 1;
 
@@ -34,7 +34,7 @@ uint8_t *calculate_syndrome(uint8_t *received_poly, int syndrome_count, int code
             result = gf_add(result, gf_mult(received_poly[j], x_power));
             x_power = gf_mult(x_power, alpha_i);
         }
-        syndrome_output[i] = result;
+        syndrome_output[i] = result; // Ascending order: S_1, S_2, ..., S_{2t}
 
         if (result != 0) {
             errors_detected = 1;
@@ -45,49 +45,52 @@ uint8_t *calculate_syndrome(uint8_t *received_poly, int syndrome_count, int code
 }
 
 euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndrome_len, int max_errors) {
-    uint8_t *remainder_prev = malloc(syndrome_len * sizeof(uint8_t));
-    uint8_t *remainder_curr = malloc(syndrome_len * sizeof(uint8_t));
-    uint8_t *helper_t_prev = malloc(syndrome_len * sizeof(uint8_t));
-    uint8_t *helper_t_curr = malloc(syndrome_len * sizeof(uint8_t));
+    uint8_t *r_prev = malloc(syndrome_len * sizeof(uint8_t));
+    uint8_t *r_curr = malloc(syndrome_len * sizeof(uint8_t));
+    uint8_t *s_prev = malloc(syndrome_len * sizeof(uint8_t));
+    uint8_t *s_curr = malloc(syndrome_len * sizeof(uint8_t));
 
-    for (int i = 0; i < syndrome_len; i++) {
-        remainder_prev[i] = syndrome_poly[i];
-        remainder_curr[i] = 0;
-        helper_t_prev[i] = 0;
-        helper_t_curr[i] = 0;
-    }
-    remainder_curr[syndrome_len - 1] = 1;
-    helper_t_curr[0] = 1;
+    // Initialize r_prev as syndrome polynomial (ascending order)
+    memcpy(r_prev, syndrome_poly, syndrome_len * sizeof(uint8_t));
 
-    while ((poly_degree(remainder_curr, syndrome_len) >= max_errors) && (poly_degree(remainder_curr, syndrome_len) != -1)) {
-        uint8_t *quotient = poly_div(remainder_prev, remainder_curr, syndrome_len);
-        uint8_t *temp_mult = poly_mult(quotient, remainder_curr, syndrome_len);
-        uint8_t *remainder_next = poly_add(remainder_prev, temp_mult, syndrome_len);
-        free(temp_mult);
+    // Initialize r_curr as x^(2t)
+    memset(r_curr, 0, syndrome_len * sizeof(uint8_t));
+    r_curr[syndrome_len - 1] = 1;
 
-        temp_mult = poly_mult(quotient, helper_t_curr, syndrome_len);
-        uint8_t *helper_t_next = poly_add(helper_t_prev, temp_mult, syndrome_len);
-        free(temp_mult);
+    // Initialize s_prev = 0, s_curr = 1
+    memset(s_prev, 0, syndrome_len * sizeof(uint8_t));
+    s_curr[0] = 1;
 
-        free(remainder_prev);
-        remainder_prev = remainder_curr;
-        remainder_curr = remainder_next;
+    while (poly_degree(r_curr, syndrome_len) >= max_errors) {
+        uint8_t *quotient = poly_div(r_prev, r_curr, syndrome_len);
+        uint8_t *temp = poly_mult(quotient, r_curr, syndrome_len);
+        uint8_t *r_next = poly_add(r_prev, temp, syndrome_len);
+        free(temp);
 
-        free(helper_t_prev);
-        helper_t_prev = helper_t_curr;
-        helper_t_curr = helper_t_next;
+        temp = poly_mult(quotient, s_curr, syndrome_len);
+        uint8_t *s_next = poly_add(s_prev, temp, syndrome_len);
+        free(temp);
+
+        free(r_prev);
+        r_prev = r_curr;
+        r_curr = r_next;
+
+        free(s_prev);
+        s_prev = s_curr;
+        s_curr = s_next;
 
         free(quotient);
     }
 
     euclidean_result result;
-    result.error_evaluator_polynomial = remainder_curr;
-    result.error_locator_polynomial = helper_t_curr;
-    result.evaluator_len = syndrome_len;
+    result.error_locator_polynomial = s_curr;
+    result.error_evaluator_polynomial = r_curr;
     result.locator_len = syndrome_len;
+    result.evaluator_len = syndrome_len;
 
-    free(remainder_prev);
-    free(helper_t_prev);
+    free(r_prev);
+    free(s_prev);
+
     return result;
 }
 
@@ -104,11 +107,15 @@ uint8_t *calculate_error_values(uint8_t *error_positions, uint8_t *error_evaluat
     uint8_t *error_values = malloc(sizeof(uint8_t) * error_amount);
     for (int i = 0; i < error_amount; ++i) {
         uint8_t *gf_diff_result = gf_diff(error_locator_polynomial, error_locator_polynomial_len);
-        error_values[i] = gf_mult(
-            gf_pow(error_positions[i], 2 * max_errors + 1),
-            gf_div(
-                gf_poly_eval(error_evaluator_polynomial, error_evaluator_polynomial_len - 1, error_positions[i]),
-                gf_poly_eval(gf_diff_result, error_locator_polynomial_len - 1, error_positions[i])));
+        int diff_degree = poly_degree(gf_diff_result, error_locator_polynomial_len - 1);
+
+        uint8_t eval_num = gf_poly_eval(error_evaluator_polynomial, error_evaluator_polynomial_len - 1, error_positions[i]);
+        uint8_t eval_den = gf_poly_eval(gf_diff_result, diff_degree, error_positions[i]);
+
+        // DEBUG PRINT
+        // printf("Root %02X: evaluator=%02X, derivative=%02X\n", error_positions[i], eval_num, eval_den);
+
+        error_values[i] = gf_div(eval_num, eval_den);
         free(gf_diff_result);
     }
     return error_values;
@@ -139,16 +146,63 @@ uint8_t *decode_message(uint8_t *encoded_message, int message_len) {
     int error_locator_polynomial_len = euclid_output.locator_len;
     uint8_t *error_positions = calculate_error_positions(error_locator_polynomial, error_locator_polynomial_len, &num_roots);
 
+    // DEBUG PRINT
+    printf("Number of roots found: %d\n", num_roots);
+
+    printf("Roots found: ");
+    for (int i = 0; i < num_roots; i++) {
+        printf("%02X ", error_positions[i]);
+    }
+    printf("\n");
+
+    for (int i = 0; i < num_roots; ++i) {
+        int position = global_tables.log_table[gf_inverse(error_positions[i])];
+        position = position % message_len;
+        printf("Root %02X -> position %d\n", error_positions[i], position);
+    }
+
     int locator_len = euclid_output.locator_len;
     int evaluator_len = euclid_output.evaluator_len;
     uint8_t *error_values = calculate_error_values(error_positions, error_evaluator_polynomial, error_locator_polynomial, num_roots, locator_len, evaluator_len);
+
+    // Debug: print error values
+    printf("Error values: ");
+    for (int i = 0; i < num_roots; i++) {
+        printf("%02X ", error_values[i]);
+    }
+    printf("\n");
 
     uint8_t *error_vector = malloc(sizeof(uint8_t) * message_len);
     memset(error_vector, 0, sizeof(uint8_t) * message_len);
 
     for (int i = 0; i < num_roots; ++i) {
-        error_vector[error_positions[i]] = error_values[i];
+        // Correct position mapping
+        int raw_position = global_tables.log_table[gf_inverse(error_positions[i])] % message_len;
+        int position = (raw_position < 8) ? raw_position : raw_position - 8;
+
+        if (position >= 0 && position < message_len) {
+            error_vector[position] = error_values[i];
+            // printf("Placing error value %02X at position %d\n", error_values[i], position);
+        }
     }
+
+    //    printf("Error evaluator polynomial: ");
+    //    for (int i = 0; i < evaluator_len; i++) {
+    //        printf("%02X ", error_evaluator_polynomial[i]);
+    //    }
+    //    printf("\n");
+    //
+    //    printf("Error locator polynomial: ");
+    //    for (int i = 0; i < syndrome_len; i++) {
+    //        printf("%02X ", error_locator_polynomial[i]);
+    //    }
+    //    printf("\n");
+    //
+    //    printf("Syndrome polynomial: ");
+    //    for (int i = 0; i < syndrome_len; i++) {
+    //        printf("%02X ", syndrome_poly[i]);
+    //    }
+    //    printf("\n");
 
     uint8_t *decoded_message = resolve_errors(error_vector, encoded_message);
 

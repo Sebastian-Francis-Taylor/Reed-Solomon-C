@@ -1,15 +1,9 @@
 #include "galios.h"
-#include "poly.h"
 #include <stdint.h>
 #include <stdlib.h>
 
 #define gf_bits 8
 #define prim_poly 0b100011101 // z^8 + z^4 + z^3 + z^2 + 1 F(2^8)
-
-typedef struct {
-    uint8_t *log_table;
-    uint8_t *antilog_table;
-} log_tables;
 
 log_tables global_tables;
 
@@ -21,7 +15,7 @@ log_tables init_gf_tables() {
     uint8_t a = 1;
     uint8_t *log_table = malloc(sizeof(uint8_t) * 256);
     uint8_t *antilog_table = malloc(sizeof(uint8_t) * 256);
-    
+
     for (uint8_t i = 0; i < 255; ++i) {
         antilog_table[i] = a;
         log_table[a] = i;
@@ -88,25 +82,18 @@ int gf_deg(uint8_t poly) {
 }
 
 uint8_t *gf_diff(uint8_t *poly, int poly_len) {
-    if (poly_len <= 0) return NULL;
-
-    uint8_t *poly_diff = malloc(sizeof(uint8_t) * poly_len);
-    if (!poly_diff) return NULL;
-
-    for (int i = 0; i < poly_len; i++) {
-        poly_diff[i] = poly[i];
+    if (poly_len <= 1) {
+        uint8_t *result = calloc(1, sizeof(uint8_t));
+        return result;
     }
 
-    for (int i = poly_len - 1; i > 0; --i) {
-        poly_diff[i] = poly_diff[i - 1];
-    }
+    uint8_t *poly_diff = calloc(poly_len - 1, sizeof(uint8_t));
 
-    poly_diff[0] = 0;
-
-    for (int i = 0; i < poly_len; ++i) {
+    for (int i = 1; i < poly_len; i++) {
         if (i % 2 == 1) {
-            poly_diff[i] = 0;
+            poly_diff[i - 1] = poly[i];
         }
+        // Even powers automatically become 0 due to calloc
     }
 
     return poly_diff;
@@ -114,7 +101,7 @@ uint8_t *gf_diff(uint8_t *poly, int poly_len) {
 
 uint8_t gf_poly_eval(const uint8_t *poly, int degree, uint8_t x) {
     uint8_t result = 0;
-    for (int i = 0; i <= degree; i++) {
+    for (int i = degree; i >= 0; i--) {
         result = gf_mult(result, x);
         result = gf_add(result, poly[i]);
     }
@@ -175,40 +162,30 @@ uint8_t *poly_mult(uint8_t *a, uint8_t *b, int len) {
 }
 
 uint8_t *poly_div(uint8_t *dividend, uint8_t *divisor, int len) {
-   uint8_t *quotient = calloc(len, sizeof(uint8_t));
-   uint8_t *temp_dividend = malloc(len * sizeof(uint8_t));
-   for (int i = 0; i < len; i++) {
-       temp_dividend[i] = dividend[i];
-   }
-   
-   int dividend_deg = poly_degree(temp_dividend, len);
-   int divisor_deg = poly_degree(divisor, len);
-   
-   while (dividend_deg >= divisor_deg && dividend_deg >= 0) {
-       uint8_t coeff = gf_div(temp_dividend[dividend_deg], divisor[divisor_deg]);
-       int deg_diff = dividend_deg - divisor_deg;
-       quotient[deg_diff] = coeff;
-       
-       for (int i = 0; i <= divisor_deg; i++) {
-           temp_dividend[i + deg_diff] = gf_add(temp_dividend[i + deg_diff], gf_mult(coeff, divisor[i]));
-       }
-       dividend_deg = poly_degree(temp_dividend, len);
-   }
-   
-   free(temp_dividend);
-   return quotient;
-}
-
-uint8_t poly_roots(uint8_t *poly, uint8_t x) {
-    uint8_t result = 0;
-    uint8_t x_power = 1;
-
-    for (int bit = 0; bit < 8; bit++) {
-        if (poly & (1 << bit)) {
-            result = gf_add(result, x_power);
-        }
-        x_power = gf_mult(x_power, x);
+    uint8_t *quotient = calloc(len, sizeof(uint8_t));
+    uint8_t *temp_dividend = malloc(len * sizeof(uint8_t));
+    for (int i = 0; i < len; i++) {
+        temp_dividend[i] = dividend[i];
     }
 
-    return result;
+    int dividend_deg = poly_degree(temp_dividend, len);
+    int divisor_deg = poly_degree(divisor, len);
+
+    while (dividend_deg >= divisor_deg && dividend_deg >= 0) {
+        uint8_t coeff = gf_div(temp_dividend[dividend_deg], divisor[divisor_deg]);
+        int deg_diff = dividend_deg - divisor_deg;
+        quotient[deg_diff] = coeff;
+
+        for (int i = 0; i <= divisor_deg; i++) {
+            temp_dividend[i + deg_diff] = gf_add(temp_dividend[i + deg_diff], gf_mult(coeff, divisor[i]));
+        }
+        dividend_deg = poly_degree(temp_dividend, len);
+    }
+
+    free(temp_dividend);
+    return quotient;
+}
+
+uint8_t gf_inverse(uint8_t a) {
+    return gf_pow(a, 254);
 }
