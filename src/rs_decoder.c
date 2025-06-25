@@ -26,23 +26,17 @@ uint8_t *find_syndromes(uint8_t *received_poly, int T, int codeword_length, uint
     uint8_t *syndrome_output = malloc(sizeof(uint8_t) * syndrome_count);
     int errors_detected = 0;
 
-    printf("Computing %d syndromes for T=%d\n", syndrome_count, T);
 
     for (int i = 0; i < syndrome_count; i++) {
         uint8_t alpha_i = gf_pow(alpha, i + 1);
         uint8_t result = 0;
 
-        printf("Syndrome %d: alpha^%d = 0x%02X\n", i, i + 1, alpha_i);
-
         for (int j = 0; j < codeword_length; j++) {
             uint8_t term = gf_mult(received_poly[j], gf_pow(alpha_i, j));
             result = gf_add(result, term);
-            printf("  j=%d: poly[%d]=0x%02X * (alpha^%d)^%d = 0x%02X * 0x%02X = 0x%02X, sum=0x%02X\n",
-                   j, j, received_poly[j], i + 1, j, received_poly[j], gf_pow(alpha_i, j), term, result);
         }
 
         syndrome_output[i] = result;
-        printf("Syndrome[%d] = 0x%02X\n", i, result);
 
         if (result != 0) {
             errors_detected = 1;
@@ -55,7 +49,6 @@ uint8_t *find_syndromes(uint8_t *received_poly, int T, int codeword_length, uint
         return NULL;
     }
 
-    printf("Errors detected!\n");
     return syndrome_output;
 }
 
