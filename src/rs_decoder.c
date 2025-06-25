@@ -21,50 +21,74 @@ typedef struct {
 
 } euclidean_result;
 
-uint8_t *calculate_syndrome(uint8_t *received_poly, int syndrome_count, int codeword_length) {
+uint8_t *find_syndromes(uint8_t *received_poly, int T, int codeword_length, uint8_t alpha) {
+    int syndrome_count = 2 * T;
     uint8_t *syndrome_output = malloc(sizeof(uint8_t) * syndrome_count);
     int errors_detected = 0;
 
+    printf("Computing %d syndromes for T=%d\n", syndrome_count, T);
+
     for (int i = 0; i < syndrome_count; i++) {
-        uint8_t alpha_i = gf_pow(2, i + 1); // Evaluate at α^(i+1)
+        uint8_t alpha_i = gf_pow(alpha, i + 1);
         uint8_t result = 0;
 
-        for (int j = codeword_length - 1; j >= 0; j--) {
-            result = gf_mult(result, alpha_i);
-            result = gf_add(result, received_poly[j]);
+        printf("Syndrome %d: alpha^%d = 0x%02X\n", i, i + 1, alpha_i);
+
+        for (int j = 0; j < codeword_length; j++) {
+            uint8_t term = gf_mult(received_poly[j], gf_pow(alpha_i, j));
+            result = gf_add(result, term);
+            printf("  j=%d: poly[%d]=0x%02X * (alpha^%d)^%d = 0x%02X * 0x%02X = 0x%02X, sum=0x%02X\n",
+                   j, j, received_poly[j], i + 1, j, received_poly[j], gf_pow(alpha_i, j), term, result);
         }
 
-        syndrome_output[i] = result; // S_1, S_2, ..., S_{2t}
+        syndrome_output[i] = result;
+        printf("Syndrome[%d] = 0x%02X\n", i, result);
 
         if (result != 0) {
             errors_detected = 1;
         }
     }
 
+    if (!errors_detected) {
+        printf("No errors detected - all syndromes are zero\n");
+        free(syndrome_output);
+        return NULL;
+    }
+
+    printf("Errors detected!\n");
     return syndrome_output;
 }
 
 euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndrome_len, int max_errors) {
-    uint8_t *r_prev = malloc(syndrome_len * sizeof(uint8_t));
-    uint8_t *r_curr = malloc(syndrome_len * sizeof(uint8_t));
-    uint8_t *s_prev = malloc(syndrome_len * sizeof(uint8_t));
-    uint8_t *s_curr = malloc(syndrome_len * sizeof(uint8_t));
+    // Initialize polynomials
+    uint8_t *r_prev = calloc(syndrome_len, sizeof(uint8_t));
+    uint8_t *r_curr = calloc(syndrome_len, sizeof(uint8_t));
+    uint8_t *s_prev = calloc(syndrome_len, sizeof(uint8_t));
+    uint8_t *s_curr = calloc(syndrome_len, sizeof(uint8_t));
 
-    // Initialize r_prev as x^(2t) - the higher degree polynomial
-    memset(r_prev, 0, syndrome_len * sizeof(uint8_t));
-    r_prev[syndrome_len - 1] = 1; // x^(2t)
+    // r_prev = syndrome polynomial
+    memcpy(r_prev, syndrome_poly, syndrome_len * sizeof(uint8_t));
 
-    // Initialize r_curr as syndrome polynomial S(x)
-    memcpy(r_curr, syndrome_poly, syndrome_len * sizeof(uint8_t));
+    // r_curr = x^(2*max_errors) - CRITICAL: check syndrome_len is large enough!
+    if (syndrome_len >= 2 * max_errors) {
+        r_curr[(2 * max_errors) - 1] = 1;
+    } else {
+        // Error: syndrome_len too small
+        printf("Error: syndrome_len (%d) must be > 2*max_errors (%d)\n", syndrome_len, 2 * max_errors);
+    }
 
-    // Initialize s_prev = 0, s_curr = 1
-    memset(s_prev, 0, syndrome_len * sizeof(uint8_t));
-    memset(s_curr, 0, syndrome_len * sizeof(uint8_t));
+    // s_prev = 0 (already zeroed)
+    // s_curr = 1
     s_curr[0] = 1;
 
-    // Continue while degree of r_curr >= t
+    printf("Initial r_prev degree: %d\n", poly_degree(r_prev, syndrome_len));
+    printf("Initial r_curr degree: %d\n", poly_degree(r_curr, syndrome_len));
+
+    // Extended Euclidean Algorithm
     while (poly_degree(r_curr, syndrome_len) >= max_errors) {
-        printf("Iteration: r_curr degree = %d\n", poly_degree(r_curr, syndrome_len));
+        printf("Iteration: r_curr (evaluator) degree = %d\n", poly_degree(r_curr, syndrome_len));
+        printf("Iteration: s_curr (locator) degree = %d\n", poly_degree(s_curr, syndrome_len));
+
         // q = r_prev / r_curr
         uint8_t *quotient = poly_div(r_prev, r_curr, syndrome_len);
 
@@ -143,7 +167,8 @@ uint8_t *resolve_errors(uint8_t *error_values, uint8_t *received_message) {
 uint8_t *decode_message(uint8_t *encoded_message, int message_len, int max_errors) {
     int syndrome_len = max_errors * 2;
 
-    uint8_t *syndrome_poly = calculate_syndrome(encoded_message, syndrome_len, message_len);
+    uint8_t alpha = 2;
+    uint8_t *syndrome_poly = find_syndromes(encoded_message, syndrome_len / 2, message_len, alpha);
 
     euclidean_result euclid_output = extended_euclidean_algorithm(syndrome_poly, syndrome_len, max_errors);
     uint8_t *error_evaluator_polynomial = euclid_output.error_evaluator_polynomial;
