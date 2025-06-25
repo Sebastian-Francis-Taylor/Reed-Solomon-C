@@ -3,22 +3,69 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+// void poly_div_test() {
+//     // IKKE FLIPPED
+//     uint8_t divisor[7] = {0, 7, 21, 73, 12, 85, 140};
+//     uint8_t dividend[7] = {1, 0, 0, 0, 0, 0, 0};
+//     //
+//     // FLIPPED
+//     //    uint8_t divisor[6] = {140,85,12,73,21,7};
+//     //    uint8_t dividend[7] = {0, 0, 0, 0, 0, 0, 1};
+//
+//     printf("divisor: ");
+//     for (int i = 0; i < 7; ++i) {
+//         printf("%hhu ", divisor[i]);
+//     }
+//     printf("\n");
+//     printf("dividend: ");
+//     for (int i = 0; i < 7; ++i) {
+//         printf("%hhu ", dividend[i]);
+//     }
+//     printf("\n");
+//
+//     uint8_t *qoutient = poly_div(dividend, divisor, 7);
+//     printf("qoutient: ");
+//     for (int i = 0; i < 7; ++i) {
+//         printf("%hhu ", qoutient[i]);
+//     }
+//     printf("\n");
+// }
+
+void poly_div_test2() {
+    // Test the first division from your hand calculation
+    uint8_t dividend[7] = {0, 0, 0, 0, 0, 0, 1};      // x^6
+    uint8_t divisor[7] = {7, 21, 73, 12, 85, 140, 0}; // syndrome poly padded to same size
+
+    printf("Testing poly_div:\n");
+    printf("Dividend: ");
+    for (int i = 0; i < 7; i++) printf("%d ", dividend[i]);
+    printf("\n");
+
+    printf("Divisor: ");
+    for (int i = 0; i < 7; i++) printf("%d ", divisor[i]);
+    printf("\n");
+
+    poly_div_result result = poly_div(dividend, divisor, 7);
+
+    printf("Quotient: ");
+    for (int i = 0; i < 7; i++) printf("%d ", result.quotient[i]);
+    printf("\n");
+
+    printf("Remainder: ");
+    for (int i = 0; i < 7; i++) printf("%d ", result.remainder[i]);
+    printf("\n");
+}
 
 int main() {
     initialise_gf();
 
-    // DEBUG PRINT
-    //    printf("GF table check:\n");
-    //    printf("antilog[0] = %02X (should be 01)\n", global_tables.antilog_table[0]);
-    //    printf("antilog[1] = %02X (should be 02)\n", global_tables.antilog_table[1]);
-    //    printf("log[1] = %d (should be 0)\n", global_tables.log_table[1]);
-    //    printf("log[2] = %d (should be 1)\n", global_tables.log_table[2]);
-    //    printf("2 * 3 = %02X\n", gf_mult(2, 3));
-    //    printf("inv(2) = %02X\n", gf_inverse(2));
-    // Use a non-zero message
-    uint8_t encoded_message[14] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    // poly_div_test();
+    // poly_div_test2();
+    uint8_t encoded_message[255] = {0};
 
-    int encoded_len = 14;
+    int encoded_len = 255;
 
     printf("Message (without Errors) \t");
     for (int i = 0; i < encoded_len; ++i) {
@@ -26,10 +73,9 @@ int main() {
     }
     printf("\n");
 
-    // IT WORKS WITH 2 ERRORS
-    encoded_message[2] ^= 0x55;
-    encoded_message[5] ^= 0xAA;
-    encoded_message[10] ^= 0x11;
+    encoded_message[254] ^= 1;
+    encoded_message[253] ^= 1;
+    encoded_message[252] ^= 1;
     //    encoded_message[13] ^= 0xA1;
 
     printf("Encoded (with errors): \t\t");

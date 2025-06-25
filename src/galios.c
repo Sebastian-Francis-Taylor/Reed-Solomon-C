@@ -1,5 +1,6 @@
 #include "galios.h"
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #define gf_bits 8
@@ -154,14 +155,36 @@ uint8_t *poly_mult(uint8_t *a, uint8_t *b, int len) {
     for (int i = 0; i < len; i++) {
         for (int j = 0; j < len; j++) {
             if (i + j < len) {
-                result[i + j] = gf_add(result[i + j], gf_mult(a[i], b[j]));
+                uint8_t term = gf_mult(a[i], b[j]);
+                result[i + j] = gf_add(result[i + j], term);
             }
         }
     }
     return result;
 }
 
-uint8_t *poly_div(uint8_t *dividend, uint8_t *divisor, int len) {
+void reverse_array(uint8_t *arr, int len) {
+    for (int i = 0; i < len / 2; i++) {
+        uint8_t temp = arr[i];
+        arr[i] = arr[len - 1 - i];
+        arr[len - 1 - i] = temp;
+    }
+}
+
+poly_div_result poly_div(uint8_t *dividend, uint8_t *divisor, int len) {
+    
+//    printf("reversed dividend: ");
+//    for (int i = 0; i < len; ++i) {
+//        printf("%d ", dividend[i]);
+//    }
+//    printf("\n");
+//
+//    printf("reversed divisor: ");
+//    for (int i = 0; i < len; ++i) {
+//        printf("%d ",divisor[i]);
+//    }
+//    printf("\n");
+
     uint8_t *quotient = calloc(len, sizeof(uint8_t));
     uint8_t *temp_dividend = malloc(len * sizeof(uint8_t));
     for (int i = 0; i < len; i++) {
@@ -173,6 +196,7 @@ uint8_t *poly_div(uint8_t *dividend, uint8_t *divisor, int len) {
 
     while (dividend_deg >= divisor_deg && dividend_deg >= 0) {
         uint8_t coeff = gf_div(temp_dividend[dividend_deg], divisor[divisor_deg]);
+        // printf("temp_dividend[dividend_deg]: %hhu \n", temp_dividend[dividend_deg]);
         int deg_diff = dividend_deg - divisor_deg;
         quotient[deg_diff] = coeff;
 
@@ -181,9 +205,11 @@ uint8_t *poly_div(uint8_t *dividend, uint8_t *divisor, int len) {
         }
         dividend_deg = poly_degree(temp_dividend, len);
     }
+    poly_div_result result;
+    result.quotient = quotient;
+    result.remainder = temp_dividend;
 
-    free(temp_dividend);
-    return quotient;
+    return result;
 }
 
 uint8_t gf_inverse(uint8_t a) {
