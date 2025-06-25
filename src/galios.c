@@ -109,7 +109,7 @@ uint8_t gf_poly_eval(const uint8_t *poly, int degree, uint8_t x) {
     return result;
 }
 
-uint8_t *gf_find_roots(const uint8_t *poly, int degree, int *out_num_roots) {
+uint9_t *gf_find_roots(const uint8_t *poly, int degree, int *out_num_roots) {
     uint8_t *roots = malloc(256 * sizeof(uint8_t));
 
     int num_roots = 0;

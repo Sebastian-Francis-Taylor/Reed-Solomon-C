@@ -187,7 +187,6 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
            poly_size, syndrome_len, max_errors);
     printf("================================\n\n");
 
-    free(initial_poly);
     return result;
 }
 
