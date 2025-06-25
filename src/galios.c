@@ -119,6 +119,13 @@ uint8_t *gf_find_roots(const uint8_t *poly, int degree, int *out_num_roots) {
         }
     }
 
+    // DEBUG PRINT
+    printf("Raw roots found by gf_find_roots: ");
+    for (int i = 0; i < num_roots; i++) {
+        printf("%d ", roots[i]);
+    }
+    printf(" (total: %d)\n", num_roots);
+
     if (num_roots > 0) {
         uint8_t *resized = realloc(roots, num_roots * sizeof(uint8_t));
         if (resized) roots = resized;
