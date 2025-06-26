@@ -6,10 +6,6 @@
 #include <sys/types.h>
 
 int max_degree = 32;
-int max_errors = 8;
-uint8_t message[128];
-int message_len = 128;
-
 uint8_t generator_polynomial;
 uint8_t roots[255];
 
@@ -223,7 +219,7 @@ uint8_t *calculate_error_positions(uint8_t *poly, int poly_len, int *num_positio
     return error_positions;
 }
 
-uint8_t *resolve_errors(uint8_t *error_vector, uint8_t *received_message) {
+uint8_t *resolve_errors(uint8_t *error_vector, uint8_t *received_message, int message_len) {
     uint8_t *decoded_message = malloc(sizeof(uint8_t) * message_len);
     memcpy(decoded_message, received_message, message_len);
 
@@ -289,7 +285,7 @@ uint8_t *decode_message(uint8_t *encoded_message, int message_len, int max_error
         }
     }
 
-    uint8_t *decoded_message = resolve_errors(error_vector, encoded_message);
+    uint8_t *decoded_message = resolve_errors(error_vector, encoded_message, message_len);
 
     free(syndrome_poly);
     free(error_positions);
