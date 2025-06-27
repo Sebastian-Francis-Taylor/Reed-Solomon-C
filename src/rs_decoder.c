@@ -1,3 +1,4 @@
+#include "rs_decoder.h"
 #include "galios.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -8,14 +9,6 @@
 int max_degree = 32;
 uint8_t generator_polynomial;
 uint8_t roots[255];
-
-typedef struct {
-    uint8_t *error_evaluator_polynomial;
-    uint8_t *error_locator_polynomial;
-    int evaluator_len;
-    int locator_len;
-
-} euclidean_result;
 
 uint8_t *find_syndromes(uint8_t *received_poly, int max_errors, int codeword_length, uint8_t alpha) {
     int syndrome_count = 2 * max_errors;
@@ -50,6 +43,7 @@ uint8_t *find_syndromes(uint8_t *received_poly, int max_errors, int codeword_len
 
     return syndrome_output;
 }
+
 // extended_euclidean_algorithm uses little endian for poly nomials, returns little endian
 euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndrome_len, int max_errors) {
 
@@ -184,63 +178,33 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
 // mixed endian
 uint8_t *calculate_error_values(uint8_t *error_positions, uint8_t *error_evaluator_polynomial, uint8_t *error_locator_polynomial, int error_amount, int error_locator_polynomial_len, int error_evaluator_polynomial_len) {
 
-    printf("\n=== DEBUG: calculate_error_values ===\n");
-    printf("Error evaluator (before reverse): ");
-    for (int j = 0; j < error_evaluator_polynomial_len; j++) printf("%d ", error_evaluator_polynomial[j]);
-    printf("\n");
-
-    // Convert error_evaluator from little-endian to big-endian for gf_poly_eval
-    printf("Error locator (before reverse for gf_diff): ");
-    for (int j = 0; j < error_locator_polynomial_len; j++) printf("%d ", error_locator_polynomial[j]);
-    printf("\n");
-
-    reverse_array(error_locator_polynomial, error_locator_polynomial_len);
-
-    printf("Error locator (after reverse for gf_diff): ");
-    for (int j = 0; j < error_locator_polynomial_len; j++) printf("%d ", error_locator_polynomial[j]);
-    printf("\n");
+    // Convert error_evaluator to big-endian once
+    reverse_array(error_evaluator_polynomial, error_evaluator_polynomial_len);
 
     uint8_t *error_values = malloc(sizeof(uint8_t) * error_amount);
     for (int i = 0; i < error_amount; ++i) {
-        printf("\n--- Processing error position %d (root %d) ---\n", i, error_positions[i]);
-
+        // Convert error_locator to little-endian for gf_diff
+        reverse_array(error_locator_polynomial, error_locator_polynomial_len);
         uint8_t *gf_diff_result = gf_diff(error_locator_polynomial, error_locator_polynomial_len);
+        // Convert back to big-endian
+        reverse_array(error_locator_polynomial, error_locator_polynomial_len);
 
-        printf("Derivative (before reverse): ");
-        for (int j = 0; j < error_locator_polynomial_len; j++) printf("%d ", gf_diff_result[j]);
-        printf("\n");
+        // Convert derivative to big-endian
+        reverse_array(gf_diff_result, error_locator_polynomial_len - 1);
 
-        // If gf_diff returns little-endian, convert to big-endian
-        reverse_array(gf_diff_result, error_locator_polynomial_len);
-
-        printf("Derivative (after reverse): ");
-        for (int j = 0; j < error_locator_polynomial_len; j++) printf("%d ", gf_diff_result[j]);
-        printf("\n");
-
-        int diff_degree = poly_degree_big_endian(gf_diff_result, error_locator_polynomial_len);
+        int diff_degree = poly_degree_big_endian(gf_diff_result, error_locator_polynomial_len - 1);
         int eval_degree = poly_degree_big_endian(error_evaluator_polynomial, error_evaluator_polynomial_len);
 
-        printf("Derivative degree: %d, Evaluator degree: %d\n", diff_degree, eval_degree);
-
-        printf("Evaluating error_evaluator at root %d\n", error_positions[i]);
         uint8_t eval_num = gf_poly_eval(error_evaluator_polynomial, eval_degree, error_positions[i], error_evaluator_polynomial_len);
-        printf("Evaluating derivative at root %d\n", error_positions[i]);
-        uint8_t eval_den = gf_poly_eval(gf_diff_result, diff_degree, error_positions[i], error_locator_polynomial_len);
+        uint8_t eval_den = gf_poly_eval(gf_diff_result, diff_degree, error_positions[i], error_locator_polynomial_len - 1);
 
-        printf("eval_num = %d, eval_den = %d\n", eval_num, eval_den);
-
-        printf("eval_num = %d, eval_den = %d\n", eval_num, eval_den);
-
-        error_values[i] = gf_div(eval_num, eval_den);
-        printf("error_value[%d] = gf_div(%d, %d) = %d\n", i, eval_num, eval_den, error_values[i]);
-
+        // 3 is temporary
+        error_values[i] = gf_mult(gf_pow(gf_inv(error_positions[i]), 2 * error_amount + 1), gf_div(eval_num, eval_den));
         free(gf_diff_result);
     }
 
-    // Convert error_evaluator back to original endianness if needed
+    // Restore error_evaluator to original endianness
     reverse_array(error_evaluator_polynomial, error_evaluator_polynomial_len);
-    printf("=========================================\n\n");
-
     return error_values;
 }
 

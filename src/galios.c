@@ -68,6 +68,11 @@ uint8_t gf_pow(uint8_t base, uint8_t exponent) {
     return global_tables.antilog_table[(global_tables.log_table[base] * exponent) % 255];
 }
 
+uint8_t gf_inv(uint8_t x) {
+    if (x == 0) return 0;  
+    return gf_pow(x, 254); 
+}
+
 int gf_deg(uint8_t poly) {
     if (poly == 0) return -1;
 
@@ -151,7 +156,7 @@ uint8_t *gf_find_roots(const uint8_t *poly, int degree, int *out_num_roots, int 
 // POLYNOMIAL OPERATIONS
 // ============================================================================
 
-// For big-endian: poly[0] = highest degree coefficient  
+// For big-endian: poly[0] = highest degree coefficient
 int poly_degree_big_endian(uint8_t *poly, int len) {
     for (int i = 0; i < len; i++) {
         if (poly[i] != 0) return len - 1 - i;
@@ -197,7 +202,7 @@ void reverse_array(uint8_t *arr, int len) {
 }
 
 poly_div_result poly_div(uint8_t *dividend, uint8_t *divisor, int len) {
-    
+
     uint8_t *quotient = calloc(len, sizeof(uint8_t));
     uint8_t *temp_dividend = malloc(len * sizeof(uint8_t));
     for (int i = 0; i < len; i++) {

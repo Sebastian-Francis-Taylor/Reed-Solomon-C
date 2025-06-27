@@ -29,7 +29,7 @@ uint8_t *calculate_error_values(uint8_t *error_positions, uint8_t *error_evaluat
                                 uint8_t *error_locator_polynomial, int error_amount,
                                 int error_locator_polynomial_len, int error_evaluator_polynomial_len);
 uint8_t *calculate_error_positions(uint8_t *poly, int poly_len, int *num_positions);
-uint8_t *resolve_errors(uint8_t *error_values, uint8_t *received_message);
+uint8_t *resolve_errors(uint8_t *error_values, uint8_t *received_message, int message_len);
 
 // Main decoding function
 uint8_t *decode_message(uint8_t *encoded_message, int message_len, int max_errors);
