@@ -100,31 +100,40 @@ uint8_t *gf_diff(uint8_t *poly, int poly_len) {
     return poly_diff;
 }
 
-uint8_t gf_poly_eval(const uint8_t *poly, int degree, uint8_t x) {
+// big-endian
+uint8_t gf_poly_eval(const uint8_t *poly, int degree, uint8_t x, int len) {
     uint8_t result = 0;
-    for (int i = degree; i >= 0; i--) {
+    int start_idx = len - 1 - degree;
+    for (int i = 0; i <= degree; i++) {
         result = gf_mult(result, x);
-        result = gf_add(result, poly[i]);
+        result = gf_add(result, poly[start_idx + i]);
     }
     return result;
 }
 
-uint8_t *gf_find_roots(const uint8_t *poly, int degree, int *out_num_roots) {
+// big-endian
+uint8_t *gf_find_roots(const uint8_t *poly, int degree, int *out_num_roots, int len) {
     uint8_t *roots = malloc(256 * sizeof(uint8_t));
 
     int num_roots = 0;
     for (uint16_t x = 0; x < 256; x++) {
-        if (gf_poly_eval(poly, degree, (uint8_t)x) == 0) {
+        if (gf_poly_eval(poly, degree, (uint8_t)x, len) == 0) {
             roots[num_roots++] = (uint8_t)x;
         }
     }
 
     // DEBUG PRINT
     printf("Raw roots found by gf_find_roots: ");
-    for (int i = 0; i < num_roots; i++) {
+    for (int i = 0; i < num_roots; ++i) {
         printf("%d ", roots[i]);
     }
     printf(" (total: %d)\n", num_roots);
+
+    printf("roots mapping\n");
+    for (int i = 0; i < num_roots; ++i) {
+        printf("root: %d log_table[root]: %d\n", roots[i], global_tables.log_table[roots[i]]);
+    }
+    printf("\n");
 
     if (num_roots > 0) {
         uint8_t *resized = realloc(roots, num_roots * sizeof(uint8_t));
@@ -142,7 +151,16 @@ uint8_t *gf_find_roots(const uint8_t *poly, int degree, int *out_num_roots) {
 // POLYNOMIAL OPERATIONS
 // ============================================================================
 
-int poly_degree(uint8_t *poly, int len) {
+// For big-endian: poly[0] = highest degree coefficient  
+int poly_degree_big_endian(uint8_t *poly, int len) {
+    for (int i = 0; i < len; i++) {
+        if (poly[i] != 0) return len - 1 - i;
+    }
+    return -1;
+}
+
+// For little-endian: poly[i] = coefficient of x^i
+int poly_degree_little_endian(uint8_t *poly, int len) {
     for (int i = len - 1; i >= 0; i--) {
         if (poly[i] != 0) return i;
     }
@@ -180,26 +198,14 @@ void reverse_array(uint8_t *arr, int len) {
 
 poly_div_result poly_div(uint8_t *dividend, uint8_t *divisor, int len) {
     
-//    printf("reversed dividend: ");
-//    for (int i = 0; i < len; ++i) {
-//        printf("%d ", dividend[i]);
-//    }
-//    printf("\n");
-//
-//    printf("reversed divisor: ");
-//    for (int i = 0; i < len; ++i) {
-//        printf("%d ",divisor[i]);
-//    }
-//    printf("\n");
-
     uint8_t *quotient = calloc(len, sizeof(uint8_t));
     uint8_t *temp_dividend = malloc(len * sizeof(uint8_t));
     for (int i = 0; i < len; i++) {
         temp_dividend[i] = dividend[i];
     }
 
-    int dividend_deg = poly_degree(temp_dividend, len);
-    int divisor_deg = poly_degree(divisor, len);
+    int dividend_deg = poly_degree_little_endian(temp_dividend, len);
+    int divisor_deg = poly_degree_little_endian(divisor, len);
 
     while (dividend_deg >= divisor_deg && dividend_deg >= 0) {
         uint8_t coeff = gf_div(temp_dividend[dividend_deg], divisor[divisor_deg]);
@@ -210,7 +216,7 @@ poly_div_result poly_div(uint8_t *dividend, uint8_t *divisor, int len) {
         for (int i = 0; i <= divisor_deg; i++) {
             temp_dividend[i + deg_diff] = gf_add(temp_dividend[i + deg_diff], gf_mult(coeff, divisor[i]));
         }
-        dividend_deg = poly_degree(temp_dividend, len);
+        dividend_deg = poly_degree_little_endian(temp_dividend, len);
     }
     poly_div_result result;
     result.quotient = quotient;

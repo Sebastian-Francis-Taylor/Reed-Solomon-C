@@ -5,38 +5,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-// void poly_div_test() {
-//     // IKKE FLIPPED
-//     uint8_t divisor[7] = {0, 7, 21, 73, 12, 85, 140};
-//     uint8_t dividend[7] = {1, 0, 0, 0, 0, 0, 0};
-//     //
-//     // FLIPPED
-//     //    uint8_t divisor[6] = {140,85,12,73,21,7};
-//     //    uint8_t dividend[7] = {0, 0, 0, 0, 0, 0, 1};
-//
-//     printf("divisor: ");
-//     for (int i = 0; i < 7; ++i) {
-//         printf("%hhu ", divisor[i]);
-//     }
-//     printf("\n");
-//     printf("dividend: ");
-//     for (int i = 0; i < 7; ++i) {
-//         printf("%hhu ", dividend[i]);
-//     }
-//     printf("\n");
-//
-//     uint8_t *qoutient = poly_div(dividend, divisor, 7);
-//     printf("qoutient: ");
-//     for (int i = 0; i < 7; ++i) {
-//         printf("%hhu ", qoutient[i]);
-//     }
-//     printf("\n");
-// }
-
-void poly_div_test2() {
+void poly_div_test() {
     // Test the first division from your hand calculation
-    uint8_t dividend[7] = {0, 0, 0, 0, 0, 0, 1};      // x^6
-    uint8_t divisor[7] = {7, 21, 73, 12, 85, 140, 0}; // syndrome poly padded to same size
+    uint8_t dividend[7] = {0, 0, 0, 0, 0, 0, 1}; // x^6
+    uint8_t divisor[7] = {140, 85, 12, 73, 21, 7, 0};
+    // BELOW IS ORIGINAL
+    // uint8_t divisor[7] = {7, 21, 73, 12, 85, 140, 0}; // syndrome poly padded to same size
+    // uint8_t dividend[7] = {0, 0, 0, 0, 0, 0, 1};      // x^6
 
     printf("Testing poly_div:\n");
     printf("Dividend: ");
@@ -62,14 +37,13 @@ int main() {
     initialise_gf();
 
     // poly_div_test();
-    // poly_div_test2();
     uint8_t encoded_message[255] = {0};
 
     int encoded_len = 255;
 
     printf("Message (without Errors) \t");
     for (int i = 0; i < encoded_len; ++i) {
-        printf("%02X ", encoded_message[i]);
+        printf("%d ", encoded_message[i]);
     }
     printf("\n");
 
@@ -80,7 +54,7 @@ int main() {
 
     printf("Encoded (with errors): \t\t");
     for (int i = 0; i < encoded_len; i++) {
-        printf("%02X ", encoded_message[i]);
+        printf("%d ", encoded_message[i]);
     }
     printf("\n");
 
@@ -89,7 +63,7 @@ int main() {
 
     printf("Decoded message: \t\t");
     for (int i = 0; i < encoded_len; i++) {
-        printf("%02X ", decoded[i]);
+        printf("%d ", decoded[i]);
     }
     printf("\n");
 

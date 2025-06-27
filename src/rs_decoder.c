@@ -30,11 +30,6 @@ uint8_t *find_syndromes(uint8_t *received_poly, int max_errors, int codeword_len
         for (int j = 1; j < codeword_length; j++) {
             uint8_t term = gf_mult(result, alpha_i);
             result = gf_add(received_poly[j], term);
-            // printf("alpha_i: %hhu\n", alpha_i);
-            // printf("term: %hhu \n", term);
-            // printf("result: %hhu \n", result);
-            // printf("received_poly: %hhu \n", received_poly[j]);
-            // printf("-------\n");
         }
 
         syndrome_output[i] = result;
@@ -55,6 +50,7 @@ uint8_t *find_syndromes(uint8_t *received_poly, int max_errors, int codeword_len
 
     return syndrome_output;
 }
+// extended_euclidean_algorithm uses little endian for poly nomials, returns little endian
 euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndrome_len, int max_errors) {
 
     printf("\n");
@@ -83,8 +79,8 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
     for (int i = 0; i < poly_size; i++) printf("%02X ", initial_poly[i]);
     printf("\n");
 
-    printf("Initial prev_remainder degree: %d\n", poly_degree(prev_remainder, poly_size));
-    printf("Initial current_remainder degree: %d\n", poly_degree(current_remainder, poly_size));
+    printf("Initial prev_remainder degree: %d\n", poly_degree_little_endian(prev_remainder, poly_size));
+    printf("Initial current_remainder degree: %d\n", poly_degree_little_endian(current_remainder, poly_size));
 
     printf("\n");
     printf("---- ITERATION LOOP STARTING ----\n");
@@ -92,10 +88,10 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
 
     int iteration = 1;
 
-    while (poly_degree(current_remainder, poly_size) > max_errors - 1) {
+    while (poly_degree_little_endian(current_remainder, poly_size) > max_errors - 1) {
         //        reverse_array(current_remainder, poly_size);
-        printf("Iteration %d: current_remainder (evaluator) degree = %d\n", iteration, poly_degree(current_remainder, poly_size));
-        printf("Iteration %d: current_bezout_coeff (locator) degree = %d\n", iteration, poly_degree(current_bezout_coeff, poly_size));
+        printf("Iteration %d: current_remainder (evaluator) degree = %d\n", iteration, poly_degree_little_endian(current_remainder, poly_size));
+        printf("Iteration %d: current_bezout_coeff (locator) degree = %d\n", iteration, poly_degree_little_endian(current_bezout_coeff, poly_size));
 
         //       reverse_array(prev_remainder, poly_size);
 
@@ -145,17 +141,8 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
 
     for (int i = 0; i < poly_size; ++i) {
     }
-    printf("Final current_remainder (error_evaluator) degree: %d\n", poly_degree(current_remainder, poly_size));
-    printf("Final current_bezout_coeff (error_locator) degree: %d\n", poly_degree(current_bezout_coeff, poly_size));
-
-    //    euclidean_result result;
-    //    result.error_locator_polynomial = current_bezout_coeff;
-    //    result.error_evaluator_polynomial = new_remainder;
-    //    result.locator_len = poly_size;
-    //    result.evaluator_len = poly_size;
-    //
-    //
-    //    // NEW ATTEMPT
+    printf("Final current_remainder (error_evaluator) degree: %d\n", poly_degree_little_endian(current_remainder, poly_size));
+    printf("Final current_bezout_coeff (error_locator) degree: %d\n", poly_degree_little_endian(current_bezout_coeff, poly_size));
 
     euclidean_result result;
     result.error_locator_polynomial = current_bezout_coeff;
@@ -164,7 +151,7 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
     result.evaluator_len = poly_size;
     printf("\n=== FINAL EUCLIDEAN RESULTS ===\n");
     printf("Error Locator Polynomial (current_bezout_coeff):\n");
-    printf("  Degree: %d\n", poly_degree(current_bezout_coeff, poly_size));
+    printf("  Degree: %d\n", poly_degree_little_endian(current_bezout_coeff, poly_size));
     printf("  Coefficients: ");
     for (int i = 0; i < poly_size; i++) {
         printf("%d ", current_bezout_coeff[i]);
@@ -172,7 +159,7 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
     printf("\n");
 
     printf("Error Evaluator Polynomial (new_remainder):\n");
-    printf("  Degree: %d\n", poly_degree(new_remainder, poly_size));
+    printf("  Degree: %d\n", poly_degree_little_endian(new_remainder, poly_size));
     printf("  Coefficients: ");
     for (int i = 0; i < poly_size; i++) {
         printf("%d ", new_remainder[i]);
@@ -194,28 +181,80 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
 // @input error_locator_polynomial
 // @return error value vector
 //
+// mixed endian
 uint8_t *calculate_error_values(uint8_t *error_positions, uint8_t *error_evaluator_polynomial, uint8_t *error_locator_polynomial, int error_amount, int error_locator_polynomial_len, int error_evaluator_polynomial_len) {
+
+    printf("\n=== DEBUG: calculate_error_values ===\n");
+    printf("Error evaluator (before reverse): ");
+    for (int j = 0; j < error_evaluator_polynomial_len; j++) printf("%d ", error_evaluator_polynomial[j]);
+    printf("\n");
+
+    // Convert error_evaluator from little-endian to big-endian for gf_poly_eval
+    printf("Error locator (before reverse for gf_diff): ");
+    for (int j = 0; j < error_locator_polynomial_len; j++) printf("%d ", error_locator_polynomial[j]);
+    printf("\n");
+
+    reverse_array(error_locator_polynomial, error_locator_polynomial_len);
+
+    printf("Error locator (after reverse for gf_diff): ");
+    for (int j = 0; j < error_locator_polynomial_len; j++) printf("%d ", error_locator_polynomial[j]);
+    printf("\n");
 
     uint8_t *error_values = malloc(sizeof(uint8_t) * error_amount);
     for (int i = 0; i < error_amount; ++i) {
+        printf("\n--- Processing error position %d (root %d) ---\n", i, error_positions[i]);
+
         uint8_t *gf_diff_result = gf_diff(error_locator_polynomial, error_locator_polynomial_len);
-        int diff_degree = poly_degree(gf_diff_result, error_locator_polynomial_len - 1);
 
-        uint8_t eval_num = gf_poly_eval(error_evaluator_polynomial, error_evaluator_polynomial_len - 1, error_positions[i]);
-        uint8_t eval_den = gf_poly_eval(gf_diff_result, diff_degree, error_positions[i]);
+        printf("Derivative (before reverse): ");
+        for (int j = 0; j < error_locator_polynomial_len; j++) printf("%d ", gf_diff_result[j]);
+        printf("\n");
 
-        // DEBUG PRINT
-        // printf("Root %02X: evaluator=%02X, derivative=%02X\n", error_positions[i], eval_num, eval_den);
+        // If gf_diff returns little-endian, convert to big-endian
+        reverse_array(gf_diff_result, error_locator_polynomial_len);
+
+        printf("Derivative (after reverse): ");
+        for (int j = 0; j < error_locator_polynomial_len; j++) printf("%d ", gf_diff_result[j]);
+        printf("\n");
+
+        int diff_degree = poly_degree_big_endian(gf_diff_result, error_locator_polynomial_len);
+        int eval_degree = poly_degree_big_endian(error_evaluator_polynomial, error_evaluator_polynomial_len);
+
+        printf("Derivative degree: %d, Evaluator degree: %d\n", diff_degree, eval_degree);
+
+        printf("Evaluating error_evaluator at root %d\n", error_positions[i]);
+        uint8_t eval_num = gf_poly_eval(error_evaluator_polynomial, eval_degree, error_positions[i], error_evaluator_polynomial_len);
+        printf("Evaluating derivative at root %d\n", error_positions[i]);
+        uint8_t eval_den = gf_poly_eval(gf_diff_result, diff_degree, error_positions[i], error_locator_polynomial_len);
+
+        printf("eval_num = %d, eval_den = %d\n", eval_num, eval_den);
+
+        printf("eval_num = %d, eval_den = %d\n", eval_num, eval_den);
 
         error_values[i] = gf_div(eval_num, eval_den);
+        printf("error_value[%d] = gf_div(%d, %d) = %d\n", i, eval_num, eval_den, error_values[i]);
+
         free(gf_diff_result);
     }
+
+    // Convert error_evaluator back to original endianness if needed
+    reverse_array(error_evaluator_polynomial, error_evaluator_polynomial_len);
+    printf("=========================================\n\n");
+
     return error_values;
 }
 
+// big-endian
 uint8_t *calculate_error_positions(uint8_t *poly, int poly_len, int *num_positions) {
-    int input_poly_degree = poly_degree(poly, poly_len);
-    uint8_t *error_positions = gf_find_roots(poly, input_poly_degree, num_positions);
+    // DEBUG PRINT
+    printf("error locator polynomial (before roots are found)");
+    for (int i = 0; i < poly_len; ++i) {
+        printf("%d ", poly[i]);
+    }
+    printf("\n");
+    int input_poly_degree = poly_degree_big_endian(poly, poly_len);
+    printf("error locator poly degree (before find roots): %d \n", input_poly_degree);
+    uint8_t *error_positions = gf_find_roots(poly, input_poly_degree, num_positions, poly_len);
     return error_positions;
 }
 
@@ -236,6 +275,8 @@ uint8_t *decode_message(uint8_t *encoded_message, int message_len, int max_error
     uint8_t alpha = 2;
     uint8_t *syndrome_poly = find_syndromes(encoded_message, syndrome_len / 2, message_len, alpha);
 
+    reverse_array(syndrome_poly, syndrome_len);
+
     euclidean_result euclid_output = extended_euclidean_algorithm(syndrome_poly, syndrome_len, max_errors);
     uint8_t *error_evaluator_polynomial = euclid_output.error_evaluator_polynomial;
     uint8_t *error_locator_polynomial = euclid_output.error_locator_polynomial;
@@ -244,7 +285,7 @@ uint8_t *decode_message(uint8_t *encoded_message, int message_len, int max_error
 
     printf("max_errors passed to euclidean: %d\n", max_errors);
     printf("syndrome_len: %d\n", syndrome_len);
-    printf("Error locator degree after euclidean: %d\n", poly_degree(error_locator_polynomial, locator_len));
+    printf("Error locator degree after euclidean: %d\n", poly_degree_big_endian(error_locator_polynomial, locator_len));
 
     reverse_array(error_locator_polynomial, locator_len);
     int num_roots = 0;
@@ -269,14 +310,12 @@ uint8_t *decode_message(uint8_t *encoded_message, int message_len, int max_error
     printf("Found %d roots (%d valid):\n", num_roots, valid_roots);
     for (int i = 0; i < valid_roots; ++i) {
 
-        // TEST THE NEW FORMULA:
         uint8_t root = valid_positions[i];
-        int position = (255 - global_tables.log_table[root]) % message_len;
+        int position = (254 - global_tables.log_table[root]) % message_len;
 
         printf("Root %d: root=%d, log_table[root]=%d, position=%d\n",
                i, root, global_tables.log_table[root], position);
 
-        // Your existing print with new position
         printf("Valid root %d: error_pos=%d, position=%d, error_val=%d\n",
                i, valid_positions[i], position, error_values[i]);
 
