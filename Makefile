@@ -11,9 +11,6 @@ TARGET_EXE = $(BIN_DIR)/rs_demo.exe
 
 all: $(TARGET)
 
-# Windows build target
-build: $(TARGET_EXE)
-
 $(TARGET): $(OBJS)
 	@mkdir -p $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $^
