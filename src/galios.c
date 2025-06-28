@@ -9,7 +9,8 @@
 log_tables global_tables;
 
 /**
- * @brief Creates log and antilog tables for the galois field GF(256) using primitive polynomial
+ * @brief Creates log and antilog tables for the galois field GF(256) using
+ *      primitive polynomial
  * @return Returns struct log_tables with log and antilog tables
  */
 log_tables init_gf_tables() {
@@ -40,9 +41,7 @@ log_tables init_gf_tables() {
 /**
  * @brief Initialises log and antilog tables
  */
-void initialise_gf() {
-    global_tables = init_gf_tables();
-}
+void initialise_gf() { global_tables = init_gf_tables(); }
 
 /**
  * @brief adds two numbers together in Galois field using bitwise XOR
@@ -50,9 +49,7 @@ void initialise_gf() {
  * @param b Second element
  * @return a and b added together within galois field
  */
-uint8_t gf_add(uint8_t a, uint8_t b) {
-    return a ^ b;
-}
+uint8_t gf_add(uint8_t a, uint8_t b) { return a ^ b; }
 
 /**
  * @brief multiplies two numbers together in GF(256) using logarithm addition
@@ -63,7 +60,8 @@ uint8_t gf_add(uint8_t a, uint8_t b) {
 uint8_t gf_mult(uint8_t a, uint8_t b) {
     if (a == 0) return 0;
     if (b == 0) return 0;
-    uint8_t log_result = (global_tables.log_table[a] + global_tables.log_table[b]) % 255;
+    uint8_t log_result =
+        (global_tables.log_table[a] + global_tables.log_table[b]) % 255;
 
     return global_tables.antilog_table[log_result];
 }
@@ -77,7 +75,8 @@ uint8_t gf_mult(uint8_t a, uint8_t b) {
 uint8_t gf_div(uint8_t a, uint8_t b) {
     if (a == 0) return 0;
     if (b == 0) return 0;
-    uint8_t log_result = (global_tables.log_table[a] - global_tables.log_table[b] + 255) % 255;
+    uint8_t log_result =
+        (global_tables.log_table[a] - global_tables.log_table[b] + 255) % 255;
 
     return global_tables.antilog_table[log_result];
 }
@@ -92,7 +91,8 @@ uint8_t gf_pow(uint8_t base, uint8_t exponent) {
     if (exponent == 0) return 1;
     if (base == 0) return 0;
 
-    return global_tables.antilog_table[(global_tables.log_table[base] * exponent) % 255];
+    return global_tables
+        .antilog_table[(global_tables.log_table[base] * exponent) % 255];
 }
 
 /**
@@ -154,7 +154,8 @@ uint8_t gf_poly_eval(const uint8_t *poly, int degree, uint8_t x, int len) {
  * @param poly_len Length of polynomial array
  * @return Array of roots found, or NULL if no roots exist
  */
-uint8_t *gf_find_roots(const uint8_t *poly, int degree, int *out_num_roots, int poly_len) {
+uint8_t *gf_find_roots(const uint8_t *poly, int degree, int *out_num_roots,
+                       int poly_len) {
     uint8_t *roots = malloc(256 * sizeof(uint8_t));
 
     int num_roots = 0;
@@ -180,7 +181,7 @@ uint8_t *gf_find_roots(const uint8_t *poly, int degree, int *out_num_roots, int 
  * @brief Calculates degree of polynomial
  * @param poly Polynomial coefficients in little-endian format
  * @param poly_len Length of polynomial
- * return Index of last exponent or -1 if the polynomial is zero
+ * @return Index of last exponent or -1 if the polynomial is zero
  */
 int poly_degree(uint8_t *poly, int len) {
     for (int i = len - 1; i >= 0; i--) {
@@ -193,7 +194,8 @@ int poly_degree(uint8_t *poly, int len) {
  * @brief Sum of two arrays in Galois field
  * @param a Polynomial in little-endian format
  * @param b Polynomial in little-endian format
- * @param len Length of the two polynomials, both polynomials must be of same length
+ * @param len Length of the two polynomials, both polynomials must be of same
+ *      length
  * @return The sum of the polynomials a and b
  */
 uint8_t *poly_add(uint8_t *a, uint8_t *b, int len) {
@@ -208,7 +210,8 @@ uint8_t *poly_add(uint8_t *a, uint8_t *b, int len) {
  * @brief multiplies two polynomials together using gf_mult and gf_add
  * @param a Polynomial in little-endian format
  * @param b Polynomial in little-endian format
- * @param len Length of the two polynomials, both polynomials must be of same length
+ * @param len Length of the two polynomials, both polynomials must be of same
+ *      length
  * @return The two polynomials multiplied together
  */
 uint8_t *poly_mult(uint8_t *a, uint8_t *b, int len) {
@@ -242,12 +245,14 @@ poly_div_result poly_div(uint8_t *dividend, uint8_t *divisor, int len) {
     int divisor_deg = poly_degree(divisor, len);
 
     while (dividend_deg >= divisor_deg && dividend_deg >= 0) {
-        uint8_t coeff = gf_div(temp_dividend[dividend_deg], divisor[divisor_deg]);
+        uint8_t coeff =
+            gf_div(temp_dividend[dividend_deg], divisor[divisor_deg]);
         int deg_diff = dividend_deg - divisor_deg;
         quotient[deg_diff] = coeff;
 
         for (int i = 0; i <= divisor_deg; i++) {
-            temp_dividend[i + deg_diff] = gf_add(temp_dividend[i + deg_diff], gf_mult(coeff, divisor[i]));
+            temp_dividend[i + deg_diff] =
+                gf_add(temp_dividend[i + deg_diff], gf_mult(coeff, divisor[i]));
         }
         dividend_deg = poly_degree(temp_dividend, len);
     }
