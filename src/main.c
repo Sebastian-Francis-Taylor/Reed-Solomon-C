@@ -1,4 +1,4 @@
-#include "galios.h"
+#include "galois.h"
 #include "rs_decoder.h"
 #include <stdint.h>
 #include <stdio.h>

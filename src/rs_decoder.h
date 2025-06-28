@@ -1,7 +1,7 @@
 #ifndef RS_DECODER_H
 #define RS_DECODER_H
 
-#include "galios.h"
+#include "galois.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
