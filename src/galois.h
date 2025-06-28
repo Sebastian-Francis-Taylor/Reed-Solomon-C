@@ -1,5 +1,5 @@
-#ifndef GALIOS_H
-#define GALIOS_H
+#ifndef GALOIS_H
+#define GALOIS_H
 
 #include <stdint.h>
 #include <stdlib.h>

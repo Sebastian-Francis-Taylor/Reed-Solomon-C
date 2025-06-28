@@ -1,5 +1,5 @@
 #include "rs_decoder.h"
-#include "galios.h"
+#include "galois.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

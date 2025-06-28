@@ -1,4 +1,4 @@
-#include "galios.h"
+#include "galois.h"
 #include "rs_decoder.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -16,22 +16,18 @@ int main() {
     }
     printf("\n");
 
-    encoded_message[10] ^= 73;
-    encoded_message[25] ^= 156;
-    encoded_message[34] ^= 42;
-    encoded_message[45] ^= 219;
-    encoded_message[67] ^= 91;
-    encoded_message[89] ^= 183;
-    encoded_message[98] ^= 67;
-    encoded_message[123] ^= 204;
-    encoded_message[145] ^= 38;
-    encoded_message[156] ^= 147;
-    encoded_message[178] ^= 85;
-    encoded_message[200] ^= 193;
-    encoded_message[221] ^= 76;
-    encoded_message[252] ^= 129;
-    encoded_message[253] ^= 241;
-    encoded_message[254] ^= 58;
+    encoded_message[5] ^= 163;
+    encoded_message[22] ^= 77;
+    encoded_message[38] ^= 201;
+    encoded_message[56] ^= 29;
+    encoded_message[74] ^= 112;
+    encoded_message[95] ^= 186;
+    encoded_message[118] ^= 43;
+    encoded_message[141] ^= 224;
+    encoded_message[167] ^= 95;
+    encoded_message[189] ^= 158;
+    encoded_message[213] ^= 71;
+    encoded_message[237] ^= 190;
 
     printf("Encoded (with errors): \t\t");
     for (int i = 0; i < encoded_len; i++) {
