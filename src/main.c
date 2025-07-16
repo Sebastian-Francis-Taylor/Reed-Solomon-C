@@ -39,8 +39,7 @@ int main() {
     }
     printf("\n");
 
-    int max_errors = 16;
-    uint8_t *decoded = decode_message(encoded_message, encoded_len, max_errors);
+    uint8_t *decoded = decode_message(encoded_message, encoded_len);
 
     printf("Decoded message: \t\t");
     for (int i = 0; i < encoded_len; i++) {

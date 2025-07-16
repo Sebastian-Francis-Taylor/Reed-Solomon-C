@@ -4,7 +4,7 @@ SRC_DIR = src
 BUILD_DIR = build
 BIN_DIR = bin
 
-SRCS = $(SRC_DIR)/main.c $(SRC_DIR)/galios.c $(SRC_DIR)/rs_decoder.c
+SRCS = $(SRC_DIR)/main.c $(SRC_DIR)/galois.c $(SRC_DIR)/rs_decoder.c
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 TARGET = $(BIN_DIR)/rs_demo
 TARGET_EXE = $(BIN_DIR)/rs_demo.exe

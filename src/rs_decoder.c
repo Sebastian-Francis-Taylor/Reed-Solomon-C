@@ -5,22 +5,23 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define MAX_ERRORS 16
+#define NUM_SYNDROMES (2 * MAX_ERRORS)
+
 /**
  * @brief Calculates the syndrome polynomial using equation 11.1 from referenced book
  * @param received_poly Polynomial representing the received encoded message
- * @param max_errors The maximum amount of errors the program should correct for
  * @param codeword_length Length of received_poly
  * @param alpha Primitive element in GF(256)
  * @return Syndrome polynomial for the received encoded message, or NULL if no errors are detected
  */
-uint8_t *find_syndromes(uint8_t *received_poly, int max_errors, int codeword_length, uint8_t alpha) {
-    int syndrome_count = 2 * max_errors;
-    uint8_t *syndrome_output = malloc(sizeof(uint8_t) * syndrome_count);
+uint8_t *find_syndromes(uint8_t *received_poly, int codeword_length, uint8_t alpha) {
+    uint8_t *syndrome_output = malloc(sizeof(uint8_t) * NUM_SYNDROMES);
     int errors_detected = 0;
 
-    printf("Calculating %d syndromes...\n", syndrome_count);
+    printf("Calculating %d syndromes...\n", NUM_SYNDROMES);
 
-    for (int i = 0; i < syndrome_count; i++) {
+    for (int i = 0; i < NUM_SYNDROMES; i++) {
         uint8_t alpha_i = gf_pow(alpha, i + 1);
         uint8_t result = received_poly[0];
 
@@ -29,7 +30,7 @@ uint8_t *find_syndromes(uint8_t *received_poly, int max_errors, int codeword_len
             result = gf_add(received_poly[j], term);
         }
 
-        syndrome_output[syndrome_count - 1 - i] = result;
+        syndrome_output[NUM_SYNDROMES - 1 - i] = result;
 
         if (result != 0) {
             errors_detected = 1;
@@ -37,7 +38,7 @@ uint8_t *find_syndromes(uint8_t *received_poly, int max_errors, int codeword_len
     }
 
     printf("Syndromes: ");
-    for (int i = 0; i < syndrome_count; i++) {
+    for (int i = 0; i < NUM_SYNDROMES; i++) {
         printf("%d ", syndrome_output[i]);
     }
     printf("\n");
@@ -55,16 +56,23 @@ uint8_t *find_syndromes(uint8_t *received_poly, int max_errors, int codeword_len
  * @brief Performs the extended euclidean algorithm to calculate the error value & error locator polynomials
  * @param syndrome_poly The syndrome polynomial for the encoded message
  * @param syndrome_len Length of the syndrome polynomial array
- * @param max_errors The maximum amount of errors the program should correct for
  * @return struct containing the error value & error locator polynomials including their respective lengths
  */
-euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndrome_len, int max_errors) {
+euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndrome_poly_len) {
     printf("\n--- Extended Euclidean Algorithm ---\n");
-    printf("Parameters: syndrome_len=%d, max_errors=%d\n", syndrome_len, max_errors);
+    printf("Parameters: syndrome_len=%d, max_errors=%d\n", syndrome_poly_len, MAX_ERRORS);
 
-    int poly_size = syndrome_len + 1;
+    int poly_size = syndrome_poly_len + 1;
     uint8_t *initial_poly = calloc(poly_size, sizeof(uint8_t));
-    initial_poly[syndrome_len] = 1;
+    initial_poly[syndrome_poly_len] = 1;
+
+    // debug print
+    printf("initial_poly:\n");
+    for (int i = 0; i <= syndrome_poly_len; ++i) {
+        printf("%d", initial_poly[i]);
+    }
+    printf("\n");
+
     uint8_t *prev_remainder = initial_poly;
     uint8_t *prev_bezout_coeff = calloc(poly_size, sizeof(uint8_t));
     uint8_t *current_remainder = syndrome_poly;
@@ -77,7 +85,7 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
            poly_degree(current_remainder, poly_size));
 
     int iteration = 1;
-    while (poly_degree(current_remainder, poly_size) > max_errors - 1) {
+    while (poly_degree(current_remainder, poly_size) > MAX_ERRORS - 1) {
         printf("Iteration %d: eval_deg=%d, loc_deg=%d\n",
                iteration,
                poly_degree(current_remainder, poly_size),
@@ -141,7 +149,7 @@ uint8_t *calculate_error_values(uint8_t *error_positions, uint8_t *error_evaluat
         uint8_t eval_num = gf_poly_eval(error_evaluator_polynomial, eval_degree, error_positions[i], error_evaluator_polynomial_len);
         uint8_t eval_den = gf_poly_eval(gf_diff_result, diff_degree, error_positions[i], error_locator_polynomial_len - 1);
 
-        error_values[i] = gf_mult(gf_pow(gf_inv(error_positions[i]), 2 * error_amount + 1), gf_div(eval_num, eval_den));
+        error_values[i] = gf_mult(gf_pow(gf_inv(error_positions[i]), 2 * MAX_ERRORS + 1), gf_div(eval_num, eval_den));
         free(gf_diff_result);
     }
 
@@ -183,16 +191,14 @@ uint8_t *resolve_errors(uint8_t *error_vector, uint8_t *received_message, int me
  * @brief Main Reed-Solomon decoding function that corrects errors in received message
  * @param encoded_message Received message potentially containing errors
  * @param message_len Length of the message
- * @param max_errors Maximum number of errors to correct (up to 16)
  * @return Decoded message with errors corrected
  */
-uint8_t *decode_message(uint8_t *encoded_message, int message_len, int max_errors) {
-    printf("Reed-Solomon Decoder - Message Length: %d, Max Errors: %d\n", message_len, max_errors);
+uint8_t *decode_message(uint8_t *encoded_message, int message_len) {
+    printf("Reed-Solomon Decoder - Message Length: %d, Max Errors: %d\n", message_len, MAX_ERRORS);
 
-    int syndrome_len = max_errors * 2;
     uint8_t alpha = 2;
 
-    uint8_t *syndrome_poly = find_syndromes(encoded_message, syndrome_len / 2, message_len, alpha);
+    uint8_t *syndrome_poly = find_syndromes(encoded_message, message_len, alpha);
     if (!syndrome_poly) {
         printf("Message is error-free\n");
         uint8_t *clean_message = malloc(message_len * sizeof(uint8_t));
@@ -200,7 +206,7 @@ uint8_t *decode_message(uint8_t *encoded_message, int message_len, int max_error
         return clean_message;
     }
 
-    euclidean_result euclid_output = extended_euclidean_algorithm(syndrome_poly, syndrome_len, max_errors);
+    euclidean_result euclid_output = extended_euclidean_algorithm(syndrome_poly, NUM_SYNDROMES);
     uint8_t *error_evaluator_polynomial = euclid_output.error_evaluator_polynomial;
     uint8_t *error_locator_polynomial = euclid_output.error_locator_polynomial;
     int locator_len = euclid_output.locator_len;
