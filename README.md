@@ -11,7 +11,7 @@ git clone https://github.com/Raaaainbow/Reed-Solomon-C
 ```
 compile the program
 ```bash
-make clean && make
+make
 ```
 run the program
 ```
