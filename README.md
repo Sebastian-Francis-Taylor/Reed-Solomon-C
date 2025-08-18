@@ -7,7 +7,7 @@
 ## Installation
 To install the program simply clone this repository:
 ```bash
-git clone https://github.com/Raaaainbow/Reed-Solomon-C
+git clone https://github.com/sebastian-francis-taylor/Reed-Solomon-C
 ```
 compile the program
 ```bash
