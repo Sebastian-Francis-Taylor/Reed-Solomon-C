@@ -1,0 +1,7 @@
+CompileFlags:
+  Add: 
+    - -Wall
+    - -O2
+    - -I./src
+    - -I.
+    - -std=c11
