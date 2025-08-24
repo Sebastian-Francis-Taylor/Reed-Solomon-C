@@ -106,7 +106,6 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
         free(quotient);
 
         prev_bezout_coeff = current_bezout_coeff;
-
         if (iteration > 1) {
             free(current_bezout_coeff);
         }
@@ -141,8 +140,13 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
         free(initial_poly);
     }
 
-    free(original_bezout_coeff);
-    free(original_current_bezout_coeff);
+    if (current_bezout_coeff != original_current_bezout_coeff) {
+        free(original_current_bezout_coeff);
+    }
+
+    if (prev_bezout_coeff != original_bezout_coeff) {
+        free(original_bezout_coeff);
+    }
 
     euclidean_result result;
     result.error_locator_polynomial = current_bezout_coeff;
