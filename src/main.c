@@ -39,14 +39,16 @@ int main() {
     }
     printf("\n");
 
-    uint8_t *decoded = decode_message(encoded_message, encoded_len);
+    uint8_t *decoded_message = decode_message(encoded_message, encoded_len);
+    free(global_tables.antilog_table);
+    free(global_tables.log_table);
 
     printf("Decoded message: \t\t");
     for (int i = 0; i < encoded_len; i++) {
-        printf("%d ", decoded[i]);
+        printf("%d ", decoded_message[i]);
     }
     printf("\n");
 
-    free(decoded);
+    free(decoded_message);
     return 0;
 }

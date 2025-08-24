@@ -16,7 +16,8 @@
  * @return Syndrome polynomial for the received encoded message, or NULL if no errors are detected
  */
 uint8_t *find_syndromes(uint8_t *received_poly, int codeword_length, uint8_t alpha) {
-    uint8_t *syndrome_output = malloc(sizeof(uint8_t) * NUM_SYNDROMES);
+    // +1 is important so that syndrome is the correct length for extended_euclidean_algorithm
+    uint8_t *syndrome_output = calloc(NUM_SYNDROMES + 1, sizeof(uint8_t));
     int errors_detected = 0;
 
     printf("Calculating %d syndromes...\n", NUM_SYNDROMES);
@@ -63,6 +64,7 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
     printf("Parameters: syndrome_len=%d, max_errors=%d\n", syndrome_poly_len, MAX_ERRORS);
 
     int poly_size = syndrome_poly_len + 1;
+
     uint8_t *initial_poly = calloc(poly_size, sizeof(uint8_t));
     initial_poly[syndrome_poly_len] = 1;
 
@@ -75,30 +77,46 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
 
     uint8_t *prev_remainder = initial_poly;
     uint8_t *prev_bezout_coeff = calloc(poly_size, sizeof(uint8_t));
+    uint8_t *original_bezout_coeff = prev_bezout_coeff;
     uint8_t *current_remainder = syndrome_poly;
     uint8_t *new_remainder;
     uint8_t *current_bezout_coeff = calloc(poly_size, sizeof(uint8_t));
+    uint8_t *original_current_bezout_coeff = current_bezout_coeff;
     current_bezout_coeff[0] = 1;
 
-    printf("Initial degrees: r_prev=%d, r_curr=%d\n",
-           poly_degree(prev_remainder, poly_size),
-           poly_degree(current_remainder, poly_size));
+    int r_prev = poly_degree(prev_remainder, poly_size);
+    int r_curr = poly_degree(current_remainder, syndrome_poly_len);
+
+    printf("Initial degrees: r_prev=%d, r_curr=%d\n", r_prev, r_curr);
 
     int iteration = 1;
-    while (poly_degree(current_remainder, poly_size) > MAX_ERRORS - 1) {
+    while (poly_degree(current_remainder, syndrome_poly_len) > MAX_ERRORS - 1) {
         printf("Iteration %d: eval_deg=%d, loc_deg=%d\n",
                iteration,
-               poly_degree(current_remainder, poly_size),
+               poly_degree(current_remainder, syndrome_poly_len),
                poly_degree(current_bezout_coeff, poly_size));
 
         poly_div_result result = poly_div(prev_remainder, current_remainder, poly_size);
         uint8_t *quotient = result.quotient;
         new_remainder = result.remainder;
 
-        uint8_t *new_bezout_coeff = poly_add(prev_bezout_coeff, poly_mult(quotient, current_bezout_coeff, poly_size), poly_size);
+        uint8_t *mult_result = poly_mult(quotient, current_bezout_coeff, poly_size);
+        uint8_t *new_bezout_coeff = poly_add(prev_bezout_coeff, mult_result, poly_size);
+        free(mult_result);
+        free(quotient);
 
         prev_bezout_coeff = current_bezout_coeff;
+
+        if (iteration > 1) {
+            free(current_bezout_coeff);
+        }
+
         current_bezout_coeff = new_bezout_coeff;
+
+        if (current_remainder != syndrome_poly) {
+            free(current_remainder);
+        }
+
         prev_remainder = current_remainder;
         current_remainder = new_remainder;
         iteration++;
@@ -118,6 +136,13 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
     }
     if (poly_size > 10) printf("...");
     printf("\n");
+
+    if (current_remainder != initial_poly) {
+        free(initial_poly);
+    }
+
+    free(original_bezout_coeff);
+    free(original_current_bezout_coeff);
 
     euclidean_result result;
     result.error_locator_polynomial = current_bezout_coeff;
