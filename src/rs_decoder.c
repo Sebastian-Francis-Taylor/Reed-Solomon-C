@@ -68,13 +68,6 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
     uint8_t *initial_poly = calloc(poly_size, sizeof(uint8_t));
     initial_poly[syndrome_poly_len] = 1;
 
-    // debug print
-    printf("initial_poly:\n");
-    for (int i = 0; i <= syndrome_poly_len; ++i) {
-        printf("%d", initial_poly[i]);
-    }
-    printf("\n");
-
     uint8_t *prev_remainder = initial_poly;
     uint8_t *prev_bezout_coeff = calloc(poly_size, sizeof(uint8_t));
     uint8_t *original_bezout_coeff = prev_bezout_coeff;
@@ -84,17 +77,8 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
     uint8_t *original_current_bezout_coeff = current_bezout_coeff;
     current_bezout_coeff[0] = 1;
 
-    int r_prev = poly_degree(prev_remainder, poly_size);
-    int r_curr = poly_degree(current_remainder, syndrome_poly_len);
-
-    printf("Initial degrees: r_prev=%d, r_curr=%d\n", r_prev, r_curr);
-
     int iteration = 1;
     while (poly_degree(current_remainder, syndrome_poly_len) > MAX_ERRORS - 1) {
-        printf("Iteration %d: eval_deg=%d, loc_deg=%d\n",
-               iteration,
-               poly_degree(current_remainder, syndrome_poly_len),
-               poly_degree(current_bezout_coeff, poly_size));
 
         poly_div_result result = poly_div(prev_remainder, current_remainder, poly_size);
         uint8_t *quotient = result.quotient;
@@ -105,19 +89,24 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
         free(mult_result);
         free(quotient);
 
+        uint8_t *old_prev_bezout = prev_bezout_coeff;
+        uint8_t *old_prev_remainder = prev_remainder;
+
         prev_bezout_coeff = current_bezout_coeff;
-        if (iteration > 1) {
-            free(current_bezout_coeff);
-        }
-
         current_bezout_coeff = new_bezout_coeff;
-
-        if (current_remainder != syndrome_poly) {
-            free(current_remainder);
-        }
 
         prev_remainder = current_remainder;
         current_remainder = new_remainder;
+
+        if (iteration > 1) {
+            if (old_prev_bezout != original_bezout_coeff && old_prev_bezout != original_current_bezout_coeff) {
+                free(old_prev_bezout);
+            }
+            if (old_prev_remainder != initial_poly && old_prev_remainder != syndrome_poly) {
+                free(old_prev_remainder);
+            }
+        }
+
         iteration++;
     }
 
@@ -136,16 +125,28 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
     if (poly_size > 10) printf("...");
     printf("\n");
 
-    if (current_remainder != initial_poly) {
-        free(initial_poly);
+    if (prev_bezout_coeff != original_bezout_coeff && prev_bezout_coeff != original_current_bezout_coeff) {
+        if (prev_bezout_coeff != current_bezout_coeff) {
+            free(prev_bezout_coeff);
+        }
+    }
+
+    if (prev_remainder != initial_poly && prev_remainder != syndrome_poly) {
+        if (prev_remainder != current_remainder) {
+            free(prev_remainder);
+        }
     }
 
     if (current_bezout_coeff != original_current_bezout_coeff) {
         free(original_current_bezout_coeff);
     }
 
-    if (prev_bezout_coeff != original_bezout_coeff) {
+    if (current_bezout_coeff != original_bezout_coeff) {
         free(original_bezout_coeff);
+    }
+
+    if (current_remainder != initial_poly) {
+        free(initial_poly);
     }
 
     euclidean_result result;
