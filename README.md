@@ -24,6 +24,13 @@ This program opperates over a GF(2**8) field and can correct up to 16 errors for
 ## Usage
 To alter the encoded message, simply open `main.c` in your editor of choice, and edit the array 'encoded_message'. Make sure that you change the length depending on your message.
 
+### Compilation
+```bash
+make              # Regular optimized build
+make debug        # Debug build with symbols (creates rs_demo_debug)
+make valgrind     # Build debug version and run valgrind on it
+make clean 
+```
 ## Reference
 If you wish to know more of the theoretical basis for Reed-Solomon decoding, along with the method used in the repository, you can read the book 'A Course In Error-Correcting Codes' by Jørn Justesen & Tom Høholdt (ISBN: 3-03719-001-9)
 
