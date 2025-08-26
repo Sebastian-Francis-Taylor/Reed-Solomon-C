@@ -15,42 +15,22 @@
  * @param alpha Primitive element in GF(256)
  * @return Syndrome polynomial for the received encoded message, or NULL if no errors are detected
  */
-uint8_t *find_syndromes(uint8_t *received_poly, int codeword_length, uint8_t alpha) {
-    // +1 is important so that syndrome is the correct length for extended_euclidean_algorithm
-    uint8_t *syndrome_output = calloc(NUM_SYNDROMES + 1, sizeof(uint8_t));
-    int errors_detected = 0;
+uint8_t *find_syndromes(uint8_t *received_poly, int codeword_length, int num_syndromes) {
+    uint8_t *syndromes = calloc(num_syndromes, sizeof(uint8_t));
+    uint8_t alpha = 2;
 
-    printf("Calculating %d syndromes...\n", NUM_SYNDROMES);
-
-    for (int i = 0; i < NUM_SYNDROMES; i++) {
+    for (int i = 0; i < num_syndromes; i++) {
         uint8_t alpha_i = gf_pow(alpha, i + 1);
-        uint8_t result = received_poly[0];
 
-        for (int j = 1; j < codeword_length; j++) {
-            uint8_t term = gf_mult(result, alpha_i);
-            result = gf_add(received_poly[j], term);
+        uint8_t result = received_poly[codeword_length - 1];
+        for (int j = codeword_length - 2; j >= 0; j--) {
+            result = gf_add(gf_mult(result, alpha_i), received_poly[j]);
         }
 
-        syndrome_output[NUM_SYNDROMES - 1 - i] = result;
-
-        if (result != 0) {
-            errors_detected = 1;
-        }
+        syndromes[i] = result;
     }
 
-    printf("Syndromes: ");
-    for (int i = 0; i < NUM_SYNDROMES; i++) {
-        printf("%d ", syndrome_output[i]);
-    }
-    printf("\n");
-
-    if (!errors_detected) {
-        printf("No errors detected - all syndromes are zero\n");
-        free(syndrome_output);
-        return NULL;
-    }
-
-    return syndrome_output;
+    return syndromes;
 }
 
 /**
@@ -226,9 +206,7 @@ uint8_t *resolve_errors(uint8_t *error_vector, uint8_t *received_message, int me
 uint8_t *decode_message(uint8_t *encoded_message, int message_len) {
     printf("Reed-Solomon Decoder - Message Length: %d, Max Errors: %d\n", message_len, MAX_ERRORS);
 
-    uint8_t alpha = 2;
-
-    uint8_t *syndrome_poly = find_syndromes(encoded_message, message_len, alpha);
+    uint8_t *syndrome_poly = find_syndromes(encoded_message, message_len, NUM_SYNDROMES);
     if (!syndrome_poly) {
         printf("Message is error-free\n");
         uint8_t *clean_message = malloc(message_len * sizeof(uint8_t));
