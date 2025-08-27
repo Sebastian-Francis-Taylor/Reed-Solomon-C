@@ -1,10 +1,10 @@
 #include "galois.h"
+#include "rs_encoder.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#define gf_bits 8
-
+const int FIELD_SIZE = 255;
 log_tables global_tables;
 
 /**
@@ -16,7 +16,7 @@ log_tables init_gf_tables() {
     uint8_t *log_table = malloc(sizeof(uint8_t) * 256);
     uint8_t *antilog_table = malloc(sizeof(uint8_t) * 256);
 
-    for (uint8_t i = 0; i < 255; ++i) {
+    for (uint8_t i = 0; i < FIELD_SIZE; ++i) {
         antilog_table[i] = a;
         log_table[a] = i;
 
@@ -39,9 +39,7 @@ log_tables init_gf_tables() {
 /**
  * @brief Initialises log and antilog tables
  */
-void initialise_gf() {
-    global_tables = init_gf_tables();
-}
+void initialise_gf() { global_tables = init_gf_tables(); }
 
 /**
  * @brief adds two numbers together in Galois field using bitwise XOR
@@ -49,9 +47,7 @@ void initialise_gf() {
  * @param b Second element
  * @return a and b added together within galois field
  */
-uint8_t gf_add(uint8_t a, uint8_t b) {
-    return a ^ b;
-}
+uint8_t gf_add(uint8_t a, uint8_t b) { return a ^ b; }
 
 /**
  * @brief multiplies two numbers together in GF(256) using logarithm addition
@@ -62,7 +58,7 @@ uint8_t gf_add(uint8_t a, uint8_t b) {
 uint8_t gf_mult(uint8_t a, uint8_t b) {
     if (a == 0) return 0;
     if (b == 0) return 0;
-    uint8_t log_result = (global_tables.log_table[a] + global_tables.log_table[b]) % 255;
+    uint8_t log_result = (global_tables.log_table[a] + global_tables.log_table[b]) % FIELD_SIZE;
 
     return global_tables.antilog_table[log_result];
 }
@@ -76,7 +72,7 @@ uint8_t gf_mult(uint8_t a, uint8_t b) {
 uint8_t gf_div(uint8_t a, uint8_t b) {
     if (a == 0) return 0;
     if (b == 0) return 0;
-    uint8_t log_result = (global_tables.log_table[a] - global_tables.log_table[b] + 255) % 255;
+    uint8_t log_result = (global_tables.log_table[a] - global_tables.log_table[b] + FIELD_SIZE) % FIELD_SIZE;
 
     return global_tables.antilog_table[log_result];
 }
@@ -91,7 +87,7 @@ uint8_t gf_pow(uint8_t base, uint8_t exponent) {
     if (exponent == 0) return 1;
     if (base == 0) return 0;
 
-    return global_tables.antilog_table[(global_tables.log_table[base] * exponent) % 255];
+    return global_tables.antilog_table[(global_tables.log_table[base] * exponent) % FIELD_SIZE];
 }
 
 /**
