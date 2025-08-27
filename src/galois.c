@@ -4,7 +4,6 @@
 #include <stdlib.h>
 
 #define gf_bits 8
-#define prim_poly 0b100011101 // z^8 + z^4 + z^3 + z^2 + 1 F(2^8)
 
 log_tables global_tables;
 
