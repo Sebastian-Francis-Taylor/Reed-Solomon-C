@@ -4,5 +4,3 @@ CompileFlags:
     - -O2
     - -I./src
     - -I.
-    - -std=c11
-  CompileAs: c
