@@ -15,22 +15,43 @@
  * @param alpha Primitive element in GF(256)
  * @return Syndrome polynomial for the received encoded message, or NULL if no errors are detected
  */
-uint8_t *find_syndromes(uint8_t *received_poly, int codeword_length, int num_syndromes) {
-    uint8_t *syndromes = calloc(num_syndromes, sizeof(uint8_t));
+uint8_t *find_syndromes(uint8_t *received_poly, int codeword_length) {
     uint8_t alpha = 2;
+    // +1 is important so that syndrome is the correct length for extended_euclidean_algorithm
+    uint8_t *syndrome_output = calloc(NUM_SYNDROMES + 1, sizeof(uint8_t));
+    int errors_detected = 0;
 
-    for (int i = 0; i < num_syndromes; i++) {
+    printf("Calculating %d syndromes...\n", NUM_SYNDROMES);
+
+    for (int i = 0; i < NUM_SYNDROMES; i++) {
         uint8_t alpha_i = gf_pow(alpha, i + 1);
+        uint8_t result = received_poly[0];
 
-        uint8_t result = received_poly[codeword_length - 1];
-        for (int j = codeword_length - 2; j >= 0; j--) {
-            result = gf_add(gf_mult(result, alpha_i), received_poly[j]);
+        for (int j = 1; j < codeword_length; j++) {
+            uint8_t term = gf_mult(result, alpha_i);
+            result = gf_add(received_poly[j], term);
         }
 
-        syndromes[i] = result;
+        syndrome_output[NUM_SYNDROMES - 1 - i] = result;
+
+        if (result != 0) {
+            errors_detected = 1;
+        }
     }
 
-    return syndromes;
+    printf("Syndromes: ");
+    for (int i = 0; i < NUM_SYNDROMES; i++) {
+        printf("%d ", syndrome_output[i]);
+    }
+    printf("\n");
+
+    if (!errors_detected) {
+        printf("No errors detected - all syndromes are zero\n");
+        free(syndrome_output);
+        return NULL;
+    }
+
+    return syndrome_output;
 }
 
 /**
@@ -148,7 +169,9 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
  * @param error_evaluator_polynomial_len Length of the error evaluator polynomial
  * @return Array with the error values
  */
-uint8_t *calculate_error_values(uint8_t *error_positions, uint8_t *error_evaluator_polynomial, uint8_t *error_locator_polynomial, int error_amount, int error_locator_polynomial_len, int error_evaluator_polynomial_len) {
+uint8_t *calculate_error_values(uint8_t *error_positions, uint8_t *error_evaluator_polynomial,
+                                uint8_t *error_locator_polynomial, int error_amount, int error_locator_polynomial_len,
+                                int error_evaluator_polynomial_len) {
     uint8_t *error_values = malloc(sizeof(uint8_t) * error_amount);
     for (int i = 0; i < error_amount; ++i) {
         uint8_t *gf_diff_result = gf_diff(error_locator_polynomial, error_locator_polynomial_len);
@@ -156,8 +179,10 @@ uint8_t *calculate_error_values(uint8_t *error_positions, uint8_t *error_evaluat
         int diff_degree = poly_degree(gf_diff_result, error_locator_polynomial_len - 1);
         int eval_degree = poly_degree(error_evaluator_polynomial, error_evaluator_polynomial_len);
 
-        uint8_t eval_num = gf_poly_eval(error_evaluator_polynomial, eval_degree, error_positions[i], error_evaluator_polynomial_len);
-        uint8_t eval_den = gf_poly_eval(gf_diff_result, diff_degree, error_positions[i], error_locator_polynomial_len - 1);
+        uint8_t eval_num =
+            gf_poly_eval(error_evaluator_polynomial, eval_degree, error_positions[i], error_evaluator_polynomial_len);
+        uint8_t eval_den =
+            gf_poly_eval(gf_diff_result, diff_degree, error_positions[i], error_locator_polynomial_len - 1);
 
         error_values[i] = gf_mult(gf_pow(gf_inv(error_positions[i]), 2 * MAX_ERRORS + 1), gf_div(eval_num, eval_den));
         free(gf_diff_result);
@@ -206,7 +231,7 @@ uint8_t *resolve_errors(uint8_t *error_vector, uint8_t *received_message, int me
 uint8_t *decode_message(uint8_t *encoded_message, int message_len) {
     printf("Reed-Solomon Decoder - Message Length: %d, Max Errors: %d\n", message_len, MAX_ERRORS);
 
-    uint8_t *syndrome_poly = find_syndromes(encoded_message, message_len, NUM_SYNDROMES);
+    uint8_t *syndrome_poly = find_syndromes(encoded_message, message_len);
     if (!syndrome_poly) {
         printf("Message is error-free\n");
         uint8_t *clean_message = malloc(message_len * sizeof(uint8_t));
@@ -225,7 +250,8 @@ uint8_t *decode_message(uint8_t *encoded_message, int message_len) {
     uint8_t *error_positions = calculate_error_positions(error_locator_polynomial, locator_len, &num_roots);
     printf("Found %d error roots\n", num_roots);
 
-    uint8_t *error_values = calculate_error_values(error_positions, error_evaluator_polynomial, error_locator_polynomial, num_roots, locator_len, evaluator_len);
+    uint8_t *error_values = calculate_error_values(error_positions, error_evaluator_polynomial,
+                                                   error_locator_polynomial, num_roots, locator_len, evaluator_len);
 
     uint8_t *error_vector = malloc(sizeof(uint8_t) * message_len);
     memset(error_vector, 0, sizeof(uint8_t) * message_len);
@@ -238,8 +264,8 @@ uint8_t *decode_message(uint8_t *encoded_message, int message_len) {
         uint8_t root = error_positions[i];
         int position = (254 - global_tables.log_table[root]) % message_len;
 
-        printf("%-5d | %-4d | %-4d | %-8d | %-11d\n",
-               i, root, global_tables.log_table[root], position, error_values[i]);
+        printf("%-5d | %-4d | %-4d | %-8d | %-11d\n", i, root, global_tables.log_table[root], position,
+               error_values[i]);
 
         if (position >= 0 && position < message_len) {
             error_vector[position] = error_values[i];
