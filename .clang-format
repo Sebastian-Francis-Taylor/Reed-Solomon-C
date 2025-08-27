@@ -1,9 +1,8 @@
 BasedOnStyle: LLVM
 IndentWidth: 4
-ColumnLimit: 0
+ColumnLimit: 120
 AllowShortFunctionsOnASingleLine: All
 AllowShortIfStatementsOnASingleLine: true
-AllowShortLoopsOnASingleLine: true
 SeparateDefinitionBlocks: Always
 BinPackParameters: true
 BinPackArguments: true
