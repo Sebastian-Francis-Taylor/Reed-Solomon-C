@@ -1,12 +1,12 @@
 import galois
 
-def calculate_generator_polynomial(t):
+def calculate_generator_polynomial(max_erros):
     GF256 = galois.GF(2**8)
     alpha = GF256.primitive_element
     
     generator = galois.Poly([1], field=GF256)
     
-    for i in range(1, 2*t + 1):
+    for i in range(1, 2*max_erros + 1):
         factor = galois.Poly([1, alpha**i], field=GF256)
         generator = generator * factor
     
