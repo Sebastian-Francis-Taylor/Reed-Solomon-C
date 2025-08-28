@@ -5,6 +5,8 @@
 #include <stdlib.h>
 
 extern const int FIELD_SIZE;
+extern const int MAX_ERRORS;
+extern const int NUM_SYNDROMES;
 
 typedef struct {
   uint8_t *log_table;

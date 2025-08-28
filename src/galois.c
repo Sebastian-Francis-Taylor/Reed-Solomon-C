@@ -1,10 +1,11 @@
 #include "galois.h"
-#include "rs_encoder.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 const int FIELD_SIZE = 255;
+const int MAX_ERRORS = 16;
+const int NUM_SYNDROMES = 2 * MAX_ERRORS;
 log_tables global_tables;
 
 /**
@@ -72,7 +73,8 @@ uint8_t gf_mult(uint8_t a, uint8_t b) {
 uint8_t gf_div(uint8_t a, uint8_t b) {
     if (a == 0) return 0;
     if (b == 0) return 0;
-    uint8_t log_result = (global_tables.log_table[a] - global_tables.log_table[b] + FIELD_SIZE) % FIELD_SIZE;
+    uint8_t log_result =
+        (global_tables.log_table[a] - global_tables.log_table[b] + FIELD_SIZE) % FIELD_SIZE;
 
     return global_tables.antilog_table[log_result];
 }
@@ -242,7 +244,8 @@ poly_div_result poly_div(uint8_t *dividend, uint8_t *divisor, int len) {
         quotient[deg_diff] = coeff;
 
         for (int i = 0; i <= divisor_deg; i++) {
-            temp_dividend[i + deg_diff] = gf_add(temp_dividend[i + deg_diff], gf_mult(coeff, divisor[i]));
+            temp_dividend[i + deg_diff] =
+                gf_add(temp_dividend[i + deg_diff], gf_mult(coeff, divisor[i]));
         }
         dividend_deg = poly_degree(temp_dividend, len);
     }
