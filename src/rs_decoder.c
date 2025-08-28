@@ -1,12 +1,25 @@
+/**
+ * Reed-Solomon Error Correction Decoder
+ *
+ * Implementation of a systemic Reed-Solomon decoder operating over GF(2**8).
+ *
+ * The encoder implements RS(223,255) Reed-Solomon codes, meaning that there can be a maximum of
+ * 223 information bytes, resulting in 32 parity bytes. The decoder works using the Euclidean
+ * Algorithm to get the error locator and value polynomials
+ *
+ * Memory Layout:
+ *  eencoded_message: [32 parity symbols][223 information symbols]
+ *  Total length: 255 symbols (FIELD_SIZE)
+ *
+ * Copyright (C) 2024
+ * Author: Sebastian Francis Taylor <me@sebastian-taylor.com>
+ */
 #include "rs_decoder.h"
 #include "galois.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define MAX_ERRORS 16
-#define NUM_SYNDROMES (2 * MAX_ERRORS)
 
 /**
  * @brief Calculates the syndrome polynomial using equation 11.1 from referenced book
@@ -55,10 +68,12 @@ uint8_t *find_syndromes(uint8_t *received_poly, int codeword_length) {
 }
 
 /**
- * @brief Performs the extended euclidean algorithm to calculate the error value & error locator polynomials
+ * @brief Performs the extended euclidean algorithm to calculate the error value & error locator
+ * polynomials
  * @param syndrome_poly The syndrome polynomial for the encoded message
  * @param syndrome_len Length of the syndrome polynomial array
- * @return struct containing the error value & error locator polynomials including their respective lengths
+ * @return struct containing the error value & error locator polynomials including their respective
+ * lengths
  */
 euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndrome_poly_len) {
     printf("\n--- Extended Euclidean Algorithm ---\n");
@@ -100,7 +115,8 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
         current_remainder = new_remainder;
 
         if (iteration > 1) {
-            if (old_prev_bezout != original_bezout_coeff && old_prev_bezout != original_current_bezout_coeff) {
+            if (old_prev_bezout != original_bezout_coeff &&
+                old_prev_bezout != original_current_bezout_coeff) {
                 free(old_prev_bezout);
             }
             if (old_prev_remainder != initial_poly && old_prev_remainder != syndrome_poly) {
@@ -126,7 +142,8 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
     if (poly_size > 10) printf("...");
     printf("\n");
 
-    if (prev_bezout_coeff != original_bezout_coeff && prev_bezout_coeff != original_current_bezout_coeff) {
+    if (prev_bezout_coeff != original_bezout_coeff &&
+        prev_bezout_coeff != original_current_bezout_coeff) {
         if (prev_bezout_coeff != current_bezout_coeff) {
             free(prev_bezout_coeff);
         }
@@ -162,15 +179,18 @@ euclidean_result extended_euclidean_algorithm(uint8_t *syndrome_poly, int syndro
 /*
  * @brief Calculates the error values using thm 11.2.2 in the referenced book
  * @param error_positions Array containing the error positions
- * @param error_evaluator_polynomial Polynomial from Euclidean algorithm for calculating error values
- * @param error_locator_polynomial Polynomial from Euclidean algorithm for calculating error positions
+ * @param error_evaluator_polynomial Polynomial from Euclidean algorithm for calculating error
+ * values
+ * @param error_locator_polynomial Polynomial from Euclidean algorithm for calculating error
+ * positions
  * @param error_amount Amount of errors detected
  * @param error_locator_polynomial_len Length of the error locator polynomial
  * @param error_evaluator_polynomial_len Length of the error evaluator polynomial
  * @return Array with the error values
  */
 uint8_t *calculate_error_values(uint8_t *error_positions, uint8_t *error_evaluator_polynomial,
-                                uint8_t *error_locator_polynomial, int error_amount, int error_locator_polynomial_len,
+                                uint8_t *error_locator_polynomial, int error_amount,
+                                int error_locator_polynomial_len,
                                 int error_evaluator_polynomial_len) {
     uint8_t *error_values = malloc(sizeof(uint8_t) * error_amount);
     for (int i = 0; i < error_amount; ++i) {
@@ -179,12 +199,13 @@ uint8_t *calculate_error_values(uint8_t *error_positions, uint8_t *error_evaluat
         int diff_degree = poly_degree(gf_diff_result, error_locator_polynomial_len - 1);
         int eval_degree = poly_degree(error_evaluator_polynomial, error_evaluator_polynomial_len);
 
-        uint8_t eval_num =
-            gf_poly_eval(error_evaluator_polynomial, eval_degree, error_positions[i], error_evaluator_polynomial_len);
-        uint8_t eval_den =
-            gf_poly_eval(gf_diff_result, diff_degree, error_positions[i], error_locator_polynomial_len - 1);
+        uint8_t eval_num = gf_poly_eval(error_evaluator_polynomial, eval_degree, error_positions[i],
+                                        error_evaluator_polynomial_len);
+        uint8_t eval_den = gf_poly_eval(gf_diff_result, diff_degree, error_positions[i],
+                                        error_locator_polynomial_len - 1);
 
-        error_values[i] = gf_mult(gf_pow(gf_inv(error_positions[i]), 2 * MAX_ERRORS + 1), gf_div(eval_num, eval_den));
+        error_values[i] = gf_mult(gf_pow(gf_inv(error_positions[i]), 2 * MAX_ERRORS + 1),
+                                  gf_div(eval_num, eval_den));
         free(gf_diff_result);
     }
 
@@ -247,11 +268,13 @@ uint8_t *decode_message(uint8_t *encoded_message, int message_len) {
 
     printf("\nFinding error positions...\n");
     int num_roots = 0;
-    uint8_t *error_positions = calculate_error_positions(error_locator_polynomial, locator_len, &num_roots);
+    uint8_t *error_positions =
+        calculate_error_positions(error_locator_polynomial, locator_len, &num_roots);
     printf("Found %d error roots\n", num_roots);
 
-    uint8_t *error_values = calculate_error_values(error_positions, error_evaluator_polynomial,
-                                                   error_locator_polynomial, num_roots, locator_len, evaluator_len);
+    uint8_t *error_values =
+        calculate_error_values(error_positions, error_evaluator_polynomial,
+                               error_locator_polynomial, num_roots, locator_len, evaluator_len);
 
     uint8_t *error_vector = malloc(sizeof(uint8_t) * message_len);
     memset(error_vector, 0, sizeof(uint8_t) * message_len);
@@ -264,8 +287,8 @@ uint8_t *decode_message(uint8_t *encoded_message, int message_len) {
         uint8_t root = error_positions[i];
         int position = (254 - global_tables.log_table[root]) % message_len;
 
-        printf("%-5d | %-4d | %-4d | %-8d | %-11d\n", i, root, global_tables.log_table[root], position,
-               error_values[i]);
+        printf("%-5d | %-4d | %-4d | %-8d | %-11d\n", i, root, global_tables.log_table[root],
+               position, error_values[i]);
 
         if (position >= 0 && position < message_len) {
             error_vector[position] = error_values[i];
