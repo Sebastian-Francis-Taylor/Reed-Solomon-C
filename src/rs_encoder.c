@@ -12,7 +12,7 @@
  *  encoded_message: [32 parity symbols][223 information symbols]
  *  Total length: 255 symbols (FIELD_SIZE)
  *
- * Copyright (C) 2024
+ * Copyright (C) 2025
  * Author: Sebastian Francis Taylor <me@sebastian-taylor.com>
  */
 #include "rs_encoder.h"
@@ -69,7 +69,7 @@ uint8_t *shift_array(const uint8_t *array, int len, int k) {
  * @brief encodeds a message of up to 223 length with a reed-solomon encoder
  * @param info_poly the array that is going to be encoded
  * @param info_poly_len the length of the array that is going to be encoded (max 223 length)
- * @return encoded array of length 223
+ * @return encoded array of length 255
  */
 uint8_t *rs_encode(uint8_t *info_poly, int info_poly_len) {
 

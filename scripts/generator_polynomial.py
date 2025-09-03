@@ -3,6 +3,7 @@ import galois
 def calculate_generator_polynomial(max_erros):
     GF256 = galois.GF(2**8)
     alpha = GF256.primitive_element
+    print(f"alpha: {alpha}")
     
     generator = galois.Poly([1], field=GF256)
     

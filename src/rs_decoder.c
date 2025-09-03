@@ -11,7 +11,7 @@
  *  eencoded_message: [32 parity symbols][223 information symbols]
  *  Total length: 255 symbols (FIELD_SIZE)
  *
- * Copyright (C) 2024
+ * Copyright (C) 2025
  * Author: Sebastian Francis Taylor <me@sebastian-taylor.com>
  */
 #include "rs_decoder.h"
