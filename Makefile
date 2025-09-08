@@ -1,4 +1,4 @@
-CFLAGS = -Wall -O2 -I./src
+CFLAGS = -Wall -O3 -I./src
 DEBUG_CFLAGS = -Wall -g -O0 -DDEBUG -I./src
 
 SRC_DIR = src
